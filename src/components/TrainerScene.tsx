@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber/native';
 import * as THREE from 'three';
 import { Exercise, fullPose, repLength } from '../data/exercises';
@@ -97,7 +97,9 @@ export function TrainerScene(props: Props) {
       </mesh>
       <gridHelper args={[6, 24, '#2f3542', '#2f3542']} position={[0, 0.001, 0]} />
       <CameraRig view={props.view} />
-      <Coach {...props} />
+      <Suspense fallback={null}>
+        <Coach {...props} />
+      </Suspense>
     </Canvas>
   );
 }

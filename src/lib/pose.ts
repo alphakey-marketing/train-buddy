@@ -91,14 +91,14 @@ export function blendPose(a: Pose, b: Pose, t: number): Pose {
   };
 }
 
-export const THIGH = 0.45;
-export const SHIN = 0.47;
-export const HIP_HEIGHT = THIGH + SHIN + 0.04;
-// 腳掌尺寸：腳踝去拇趾球（向前）、腳踝去腳底（向下）、腳趾長度
-export const BALL_Z = 0.13;
-export const SOLE = 0.04;
-export const TOE_LEN = 0.065;
-// 坐地時盤骨中心離地高度
+// 尺寸由 assets/models/figure.glb 量出嚟（tools/measure_figure.py）。換模型要重新量。
+export const THIGH = 0.419;
+export const SHIN = 0.428;
+// 腳掌尺寸：腳踝去拇趾球（向前）、腳踝離地（向下）
+export const BALL_Z = 0.123;
+export const SOLE = 0.106;
+export const HIP_HEIGHT = THIGH + SHIN + SOLE;
+// 坐地時髖關節離地高度
 export const SEAT_HEIGHT = 0.11;
 
 // How far the pelvis must drop so the lower foot stays on the floor.
