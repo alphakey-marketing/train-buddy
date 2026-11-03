@@ -4,6 +4,8 @@
 //  - Knee: positive = bend (shin goes back). Elbow X: negative = bend (forearm comes forward); elbow Z bends sideways.
 //  - Spine X: positive = bend forward. Spine Z: side bend. Spine Y: positive = turn to own left.
 //  - Ankle: positive = point toes down (heel up, 踮腳). Negative = toes up.
+//  - Toe: positive = curl toes down (屈趾 / 握拳), negative = lift toes up (反趾).
+//    企喺地踮腳時，腳趾會自動放平貼地。
 // Whole-body controls (成個身一齊郁):
 //  - tilt: lean whole body forward around the pelvis (~1.4 = 俯臥).
 //  - twist: turn whole body around vertical axis, positive = turn to own left (骨盤回旋).
@@ -25,6 +27,8 @@ export type Pose = {
   rKnee: number;
   lAnkle: number;
   rAnkle: number;
+  lToe: number;
+  rToe: number;
   tilt: number;
   twist: number;
   shift: number;
@@ -45,6 +49,8 @@ export const NEUTRAL: Pose = {
   rKnee: 0,
   lAnkle: 0,
   rAnkle: 0,
+  lToe: 0,
+  rToe: 0,
   tilt: 0,
   twist: 0,
   shift: 0,
@@ -75,6 +81,8 @@ export function blendPose(a: Pose, b: Pose, t: number): Pose {
     rKnee: lerp(a.rKnee, b.rKnee, k),
     lAnkle: lerp(a.lAnkle, b.lAnkle, k),
     rAnkle: lerp(a.rAnkle, b.rAnkle, k),
+    lToe: lerp(a.lToe, b.lToe, k),
+    rToe: lerp(a.rToe, b.rToe, k),
     tilt: lerp(a.tilt, b.tilt, k),
     twist: lerp(a.twist, b.twist, k),
     shift: lerp(a.shift, b.shift, k),
@@ -86,8 +94,10 @@ export function blendPose(a: Pose, b: Pose, t: number): Pose {
 export const THIGH = 0.45;
 export const SHIN = 0.47;
 export const HIP_HEIGHT = THIGH + SHIN + 0.04;
-// 踮腳時腳尖比腳踝低幾多（大約腳掌前半長度）
-export const TOE_REACH = 0.15;
+// 腳掌尺寸：腳踝去拇趾球（向前）、腳踝去腳底（向下）、腳趾長度
+export const BALL_Z = 0.13;
+export const SOLE = 0.04;
+export const TOE_LEN = 0.065;
 // 坐地時盤骨中心離地高度
 export const SEAT_HEIGHT = 0.11;
 
@@ -97,7 +107,8 @@ export function pelvisDrop(p: Pose): number {
   const legHeight = (hip: Vec3, knee: number, ankle: number) =>
     THIGH * Math.cos(hip[0]) * Math.cos(hip[2]) +
     SHIN * Math.cos(hip[0] + knee) * Math.cos(hip[2]) +
-    TOE_REACH * Math.sin(Math.max(0, ankle));
+    // 踮腳：以拇趾球做支點，腳踝升高
+    (ankle > 0 ? BALL_Z * Math.sin(ankle) + SOLE * (Math.cos(ankle) - 1) : 0);
   const tallest = Math.max(legHeight(p.lHip, p.lKnee, p.lAnkle), legHeight(p.rHip, p.rKnee, p.rAnkle));
   return THIGH + SHIN - tallest;
 }
@@ -106,4 +117,9 @@ export function pelvisDrop(p: Pose): number {
 export function rootHeight(p: Pose): number {
   const standing = (HIP_HEIGHT - pelvisDrop(p)) * Math.cos(p.tilt);
   return lerp(standing, SEAT_HEIGHT, p.seat) + p.lift;
+}
+
+// 腳趾關節實際角度：企喺地踮腳時，腳趾反向屈返，保持貼地。
+export function toeAngle(toe: number, ankle: number, seat: number): number {
+  return toe - Math.max(0, ankle) * (1 - seat);
 }

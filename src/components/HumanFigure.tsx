@@ -2,7 +2,7 @@ import { useRef, MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber/native';
 import * as THREE from 'three';
 import { MuscleId } from '../data/muscles';
-import { Pose, rootHeight, SHIN, THIGH } from '../lib/pose';
+import { BALL_Z, Pose, rootHeight, SHIN, SOLE, THIGH, TOE_LEN, toeAngle } from '../lib/pose';
 
 export type Intensity = Partial<Record<MuscleId, number>>;
 
@@ -11,18 +11,116 @@ type Props = {
   intensityRef: MutableRefObject<Intensity>;
 };
 
-const SKIN = '#9aa7b8';
+type V3 = [number, number, number];
+
 const MUSCLE_IDLE = new THREE.Color('#b9a49c');
 const MUSCLE_HOT = new THREE.Color('#ff3b30');
 
-function Limb({ length, radius, y }: { length: number; radius: number; y: number }) {
-  return (
-    <mesh position={[0, y, 0]} castShadow>
-      <capsuleGeometry args={[radius, length, 6, 12]} />
-      <meshStandardMaterial color={SKIN} roughness={0.7} />
-    </mesh>
-  );
+// 公仔皮膚同關節材質，全部部件共用
+const skin = new THREE.MeshStandardMaterial({ color: '#a3afc0', roughness: 0.55, metalness: 0.05 });
+const joint = new THREE.MeshStandardMaterial({ color: '#8793a6', roughness: 0.5, metalness: 0.05 });
+
+// 用側面輪廓 (半徑, 高度) 轉一圈整肢體，有粗有幼，似真人線條。
+// 高度由細到大排，兩頭半徑係 0 先會封口。
+function lathe(profile: [number, number][], segments = 24) {
+  const curve = new THREE.SplineCurve(profile.map(([r, y]) => new THREE.Vector2(r, y)));
+  const pts = curve.getPoints(40).map((v) => new THREE.Vector2(Math.max(0, v.x), v.y));
+  return new THREE.LatheGeometry(pts, segments);
 }
+
+const sphere = new THREE.SphereGeometry(1, 20, 14);
+
+// 肢體輪廓。關節喺 y = 0，向下伸。
+const GEO = {
+  torso: lathe([
+    [0, -0.06],
+    [0.12, -0.04],
+    [0.135, 0.04],
+    [0.13, 0.12],
+    [0.145, 0.22],
+    [0.17, 0.33],
+    [0.185, 0.42],
+    [0.19, 0.47],
+    [0.16, 0.53],
+    [0.09, 0.57],
+    [0.05, 0.6],
+    [0, 0.61],
+  ], 32),
+  neck: lathe([
+    [0, -0.02],
+    [0.05, 0],
+    [0.044, 0.06],
+    [0.047, 0.1],
+    [0, 0.12],
+  ]),
+  thigh: lathe([
+    [0, -THIGH - 0.02],
+    [0.035, -THIGH - 0.015],
+    [0.05, -THIGH + 0.01],
+    [0.055, -0.4],
+    [0.064, -0.32],
+    [0.076, -0.2],
+    [0.084, -0.09],
+    [0.083, -0.01],
+    [0.065, 0.04],
+    [0, 0.06],
+  ]),
+  shin: lathe([
+    [0, -SHIN - 0.02],
+    [0.03, -SHIN - 0.015],
+    [0.038, -SHIN + 0.02],
+    [0.036, -0.4],
+    [0.04, -0.32],
+    [0.053, -0.2],
+    [0.058, -0.12],
+    [0.055, -0.05],
+    [0.05, 0],
+    [0, 0.03],
+  ]),
+  upperArm: lathe([
+    [0, -0.32],
+    [0.032, -0.315],
+    [0.04, -0.29],
+    [0.042, -0.24],
+    [0.049, -0.15],
+    [0.053, -0.07],
+    [0.055, -0.01],
+    [0.045, 0.03],
+    [0, 0.05],
+  ]),
+  forearm: lathe([
+    [0, -0.26],
+    [0.022, -0.255],
+    [0.027, -0.24],
+    [0.029, -0.19],
+    [0.038, -0.1],
+    [0.043, -0.04],
+    [0.038, 0],
+    [0, 0.025],
+  ]),
+};
+
+// 一件身體部件
+function Part({
+  geo,
+  position = [0, 0, 0],
+  scale = [1, 1, 1],
+  rotation = [0, 0, 0],
+  mat = skin,
+}: {
+  geo: THREE.BufferGeometry;
+  position?: V3;
+  scale?: V3;
+  rotation?: V3;
+  mat?: THREE.Material;
+}) {
+  return <mesh geometry={geo} material={mat} position={position} scale={scale} rotation={rotation} />;
+}
+
+// 圓波波（頭、關節、手掌、腳掌）
+const Ball = (position: V3, scale: V3, mat: THREE.Material = skin) => (
+  <Part geo={sphere} position={position} scale={scale} mat={mat} />
+);
 
 // A muscle is an ellipsoid stuck onto a body segment that glows red when it works.
 function Muscle({
@@ -33,8 +131,8 @@ function Muscle({
 }: {
   id: MuscleId;
   intensityRef: MutableRefObject<Intensity>;
-  position: [number, number, number];
-  scale: [number, number, number];
+  position: V3;
+  scale: V3;
 }) {
   const mat = useRef<THREE.MeshStandardMaterial>(null);
   useFrame(() => {
@@ -44,9 +142,8 @@ function Muscle({
     mat.current.emissive.copy(MUSCLE_HOT).multiplyScalar(v * 0.45);
   });
   return (
-    <mesh position={position} scale={scale}>
-      <sphereGeometry args={[1, 16, 12]} />
-      <meshStandardMaterial ref={mat} roughness={0.5} />
+    <mesh geometry={sphere} position={position} scale={scale}>
+      <meshStandardMaterial ref={mat} roughness={0.45} />
     </mesh>
   );
 }
@@ -65,10 +162,12 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
   const rKn = useRef<THREE.Group>(null);
   const lAn = useRef<THREE.Group>(null);
   const rAn = useRef<THREE.Group>(null);
+  const lTo = useRef<THREE.Group>(null);
+  const rTo = useRef<THREE.Group>(null);
 
   useFrame(() => {
     const p = poseRef.current;
-    const set = (g: THREE.Group | null, r: [number, number, number]) => g?.rotation.set(r[0], r[1], r[2]);
+    const set = (g: THREE.Group | null, r: V3) => g?.rotation.set(r[0], r[1], r[2]);
     if (root.current) {
       root.current.position.set(p.shift, rootHeight(p), 0);
       root.current.rotation.set(p.tilt, p.twist, 0);
@@ -85,42 +184,64 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
     set(rKn.current, [p.rKnee, 0, 0]);
     set(lAn.current, [p.lAnkle, 0, 0]);
     set(rAn.current, [p.rAnkle, 0, 0]);
+    set(lTo.current, [toeAngle(p.lToe, p.lAnkle, p.seat), 0, 0]);
+    set(rTo.current, [toeAngle(p.rToe, p.rAnkle, p.seat), 0, 0]);
   });
 
-  const M = (id: MuscleId, position: [number, number, number], scale: [number, number, number]) => (
+  const M = (id: MuscleId, position: V3, scale: V3) => (
     <Muscle key={`${id}-${position.join()}`} id={id} intensityRef={intensityRef} position={position} scale={scale} />
+  );
+
+  // 手掌：掌心向身，拇指向前
+  const hand = (
+    <group position={[0, -0.255, 0]}>
+      {Ball([0, -0.045, 0], [0.02, 0.05, 0.042])}
+      {Ball([0, -0.105, 0.004], [0.016, 0.042, 0.037])}
+      <Part geo={sphere} position={[0, -0.035, 0.045]} rotation={[-0.5, 0, 0]} scale={[0.014, 0.032, 0.014]} />
+    </group>
   );
 
   const arm = (side: 1 | -1, shoulder: typeof lSh, elbow: typeof lEl) => (
     <group ref={shoulder} position={[0.2 * side, 0.5, 0]}>
-      {M('shoulders', [0.01 * side, -0.02, 0], [0.075, 0.075, 0.075])}
-      <Limb length={0.22} radius={0.048} y={-0.15} />
-      {M('triceps', [0, -0.15, -0.035], [0.045, 0.1, 0.035])}
-      {M('biceps', [0, -0.15, 0.035], [0.042, 0.09, 0.033])}
+      {Ball([0, 0, 0], [0.052, 0.052, 0.052], joint)}
+      <Part geo={GEO.upperArm} />
+      {M('shoulders', [0.012 * side, -0.035, 0], [0.065, 0.085, 0.07])}
+      {M('triceps', [0, -0.15, -0.03], [0.042, 0.095, 0.034])}
+      {M('biceps', [0, -0.15, 0.03], [0.04, 0.085, 0.032])}
       <group ref={elbow} position={[0, -0.3, 0]}>
-        <Limb length={0.2} radius={0.04} y={-0.13} />
-        <mesh position={[0, -0.29, 0]}>
-          <sphereGeometry args={[0.05, 12, 10]} />
-          <meshStandardMaterial color={SKIN} />
-        </mesh>
+        {Ball([0, 0, 0], [0.04, 0.04, 0.04], joint)}
+        <Part geo={GEO.forearm} scale={[1, 1, 0.85]} />
+        {hand}
       </group>
     </group>
   );
 
-  const leg = (side: 1 | -1, hip: typeof lHip, knee: typeof lKn, ankle: typeof lAn) => (
+  const foot = (side: 1 | -1, toe: typeof lTo) => (
+    <>
+      {Ball([0, 0, 0], [0.036, 0.036, 0.036], joint)}
+      {Ball([0, -SOLE + 0.036, -0.025], [0.036, 0.036, 0.038])}
+      {Ball([0, -SOLE + 0.028, 0.055], [0.045, 0.028, 0.085])}
+      {M('feet', [0, -SOLE + 0.018, 0.05], [0.048, 0.02, 0.085])}
+      {/* 腳趾喺拇趾球屈曲 */}
+      <group ref={toe} position={[0, -SOLE + 0.018, BALL_Z]}>
+        {Ball([0, 0, TOE_LEN / 2], [0.046, 0.018, TOE_LEN / 2 + 0.006])}
+        {Ball([-0.019 * side, 0.002, TOE_LEN / 2 + 0.006], [0.019, 0.019, TOE_LEN / 2 + 0.004])}
+      </group>
+    </>
+  );
+
+  const leg = (side: 1 | -1, hip: typeof lHip, knee: typeof lKn, ankle: typeof lAn, toe: typeof lTo) => (
     <group ref={hip} position={[0.1 * side, 0, 0]}>
-      <Limb length={THIGH - 0.14} radius={0.07} y={-THIGH / 2} />
-      {M('quads', [0, -0.2, 0.045], [0.065, 0.16, 0.05])}
-      {M('hamstrings', [0, -0.22, -0.045], [0.06, 0.15, 0.045])}
+      <Part geo={GEO.thigh} />
+      {M('quads', [0, -0.2, 0.05], [0.068, 0.16, 0.045])}
+      {M('hamstrings', [0, -0.22, -0.05], [0.062, 0.15, 0.042])}
       <group ref={knee} position={[0, -THIGH, 0]}>
-        <Limb length={SHIN - 0.12} radius={0.055} y={-SHIN / 2} />
-        {M('calves', [0, -0.13, -0.04], [0.05, 0.11, 0.04])}
+        {Ball([0, 0, 0], [0.052, 0.052, 0.052], joint)}
+        {Ball([0, 0.005, 0.042], [0.032, 0.036, 0.022])}
+        <Part geo={GEO.shin} />
+        {M('calves', [0, -0.15, -0.045], [0.05, 0.11, 0.04])}
         <group ref={ankle} position={[0, -SHIN, 0]}>
-          <mesh position={[0, -0.01, 0.05]}>
-            <boxGeometry args={[0.09, 0.05, 0.22]} />
-            <meshStandardMaterial color={SKIN} />
-          </mesh>
-          {M('feet', [0, -0.03, 0.06], [0.055, 0.03, 0.1])}
+          {foot(side, toe)}
         </group>
       </group>
     </group>
@@ -129,47 +250,43 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
   return (
     <group ref={root}>
       {/* pelvis */}
-      <mesh scale={[1.25, 0.7, 0.85]}>
-        <sphereGeometry args={[0.14, 16, 12]} />
-        <meshStandardMaterial color={SKIN} roughness={0.7} />
-      </mesh>
+      {Ball([0, 0, 0], [0.182, 0.105, 0.123])}
       {M('glutes', [0.075, -0.04, -0.09], [0.08, 0.085, 0.06])}
       {M('glutes', [-0.075, -0.04, -0.09], [0.08, 0.085, 0.06])}
-      {M('psoas', [0.06, 0.02, 0.105], [0.04, 0.08, 0.03])}
-      {M('psoas', [-0.06, 0.02, 0.105], [0.04, 0.08, 0.03])}
+      {M('psoas', [0.06, 0.02, 0.1], [0.04, 0.08, 0.03])}
+      {M('psoas', [-0.06, 0.02, 0.1], [0.04, 0.08, 0.03])}
 
       <group ref={spine} position={[0, 0.05, 0]}>
-        <mesh position={[0, 0.27, 0]} scale={[1.25, 1, 0.75]}>
-          <capsuleGeometry args={[0.15, 0.25, 6, 16]} />
-          <meshStandardMaterial color={SKIN} roughness={0.7} />
-        </mesh>
-        {M('traps', [0, 0.49, -0.07], [0.15, 0.07, 0.05])}
+        <Part geo={GEO.torso} scale={[1, 1, 0.62]} />
+        {M('traps', [0, 0.5, -0.06], [0.14, 0.06, 0.045])}
         {M('lats', [0.11, 0.32, -0.085], [0.07, 0.14, 0.045])}
         {M('lats', [-0.11, 0.32, -0.085], [0.07, 0.14, 0.045])}
-        {M('rotatorCuff', [0.14, 0.42, -0.1], [0.06, 0.05, 0.03])}
-        {M('rotatorCuff', [-0.14, 0.42, -0.1], [0.06, 0.05, 0.03])}
-        {M('erectors', [0.04, 0.17, -0.105], [0.032, 0.14, 0.03])}
-        {M('erectors', [-0.04, 0.17, -0.105], [0.032, 0.14, 0.03])}
+        {M('rotatorCuff', [0.14, 0.42, -0.09], [0.06, 0.05, 0.03])}
+        {M('rotatorCuff', [-0.14, 0.42, -0.09], [0.06, 0.05, 0.03])}
+        {M('erectors', [0.04, 0.17, -0.09], [0.032, 0.14, 0.03])}
+        {M('erectors', [-0.04, 0.17, -0.09], [0.032, 0.14, 0.03])}
         {M('chest', [0.08, 0.41, 0.095], [0.08, 0.06, 0.035])}
         {M('chest', [-0.08, 0.41, 0.095], [0.08, 0.06, 0.035])}
-        {M('abs', [0, 0.2, 0.105], [0.075, 0.13, 0.03])}
-        {M('obliques', [0.15, 0.2, 0.04], [0.04, 0.11, 0.06])}
-        {M('obliques', [-0.15, 0.2, 0.04], [0.04, 0.11, 0.06])}
+        {M('abs', [0, 0.2, 0.085], [0.075, 0.13, 0.03])}
+        {M('obliques', [0.14, 0.2, 0.03], [0.035, 0.11, 0.06])}
+        {M('obliques', [-0.14, 0.2, 0.03], [0.035, 0.11, 0.06])}
 
         <group ref={neck} position={[0, 0.56, 0]}>
-          <Limb length={0.06} radius={0.045} y={0.04} />
-          <mesh position={[0, 0.17, 0.01]} scale={[0.9, 1.05, 1]}>
-            <sphereGeometry args={[0.11, 20, 16]} />
-            <meshStandardMaterial color={SKIN} roughness={0.7} />
-          </mesh>
+          <Part geo={GEO.neck} />
+          {/* 頭：蛋形頭殼 + 下巴 + 鼻 + 耳 */}
+          {Ball([0, 0.18, 0.005], [0.088, 0.105, 0.1])}
+          {Ball([0, 0.135, 0.03], [0.064, 0.058, 0.07])}
+          {Ball([0, 0.165, 0.1], [0.014, 0.024, 0.018])}
+          {Ball([0.088, 0.17, 0], [0.012, 0.028, 0.02])}
+          {Ball([-0.088, 0.17, 0], [0.012, 0.028, 0.02])}
         </group>
 
         {arm(1, lSh, lEl)}
         {arm(-1, rSh, rEl)}
       </group>
 
-      {leg(1, lHip, lKn, lAn)}
-      {leg(-1, rHip, rKn, rAn)}
+      {leg(1, lHip, lKn, lAn, lTo)}
+      {leg(-1, rHip, rKn, rAn, rTo)}
     </group>
   );
 }
