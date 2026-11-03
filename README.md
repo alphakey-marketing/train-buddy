@@ -20,7 +20,10 @@ npx expo start
 App.tsx                         主畫面（動作選擇、肌肉清單、控制）
 src/components/TrainerScene.tsx 3D 場景、鏡頭、動畫播放
 src/components/HumanFigure.tsx  人形同肌肉
-src/data/exercises.ts           動作數據（關鍵幀）
+src/data/exercises.ts           動作總表（基本動作 + 動作庫）
+src/data/types.ts               動作類型、分類（基本 / P0–P3）
+src/data/library/ch4.ts         身體操作書 ch4 初級動作庫（16 個）
+src/data/library/ch5.ts         身體操作書 ch5 發展動作庫（13 個）
 src/data/muscles.ts             肌肉名稱
 src/lib/pose.ts                 姿勢類型同插值
 docs/PLAN.md                    開發規劃

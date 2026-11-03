@@ -11,7 +11,10 @@ export type MuscleId =
   | 'glutes'
   | 'quads'
   | 'hamstrings'
-  | 'calves';
+  | 'calves'
+  | 'feet'
+  | 'psoas'
+  | 'rotatorCuff';
 
 export type MuscleInfo = {
   id: MuscleId;
@@ -33,4 +36,7 @@ export const MUSCLES: Record<MuscleId, MuscleInfo> = {
   quads: { id: 'quads', name: '股四頭肌', en: 'Quadriceps' },
   hamstrings: { id: 'hamstrings', name: '膕繩肌', en: 'Hamstrings' },
   calves: { id: 'calves', name: '小腿肌', en: 'Calves' },
+  feet: { id: 'feet', name: '足底肌', en: 'Foot intrinsics' },
+  psoas: { id: 'psoas', name: '髂腰肌', en: 'Iliopsoas' },
+  rotatorCuff: { id: 'rotatorCuff', name: '旋轉肌袖', en: 'Rotator cuff' },
 };

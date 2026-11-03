@@ -1,22 +1,10 @@
-import { MuscleId } from './muscles';
 import { NEUTRAL, Pose } from '../lib/pose';
+import { Exercise, P } from './types';
+import { CH4 } from './library/ch4';
+import { CH5 } from './library/ch5';
 
-export type Keyframe = {
-  at: number; // seconds from start of one rep
-  pose: Partial<Pose>;
-  effort: number; // 0..1, how hard the target muscles work at this moment
-  cue: string; // coaching cue shown on screen
-};
-
-export type Exercise = {
-  id: string;
-  name: string;
-  kind: '伸展' | '訓練';
-  muscles: { id: MuscleId; weight: number }[]; // weight 1 = main, 0.5 = support
-  keyframes: Keyframe[]; // last keyframe should return to the first pose so it loops
-};
-
-const P = (p: Partial<Pose>): Partial<Pose> => p;
+export type { Exercise, Keyframe, ExerciseGroup, ExerciseKind } from './types';
+export { GROUPS } from './types';
 
 const squatDown = P({
   spine: [0.45, 0, 0],
@@ -30,11 +18,12 @@ const squatDown = P({
   rElbow: [0, 0, 0],
 });
 
-export const EXERCISES: Exercise[] = [
+const BASIC: Exercise[] = [
   {
     id: 'squat',
     name: '深蹲',
     kind: '訓練',
+    group: 'basic',
     muscles: [
       { id: 'quads', weight: 1 },
       { id: 'glutes', weight: 1 },
@@ -53,6 +42,7 @@ export const EXERCISES: Exercise[] = [
     id: 'side-reach',
     name: '側身伸展',
     kind: '伸展',
+    group: 'basic',
     muscles: [
       { id: 'obliques', weight: 1 },
       { id: 'lats', weight: 1 },
@@ -91,6 +81,7 @@ export const EXERCISES: Exercise[] = [
     id: 'toe-touch',
     name: '前彎拉筋',
     kind: '伸展',
+    group: 'basic',
     muscles: [
       { id: 'hamstrings', weight: 1 },
       { id: 'erectors', weight: 0.7 },
@@ -118,6 +109,7 @@ export const EXERCISES: Exercise[] = [
     id: 'shoulder-press',
     name: '肩推',
     kind: '訓練',
+    group: 'basic',
     muscles: [
       { id: 'shoulders', weight: 1 },
       { id: 'triceps', weight: 0.8 },
@@ -149,6 +141,7 @@ export const EXERCISES: Exercise[] = [
     id: 'lunge',
     name: '弓步',
     kind: '訓練',
+    group: 'basic',
     muscles: [
       { id: 'quads', weight: 1 },
       { id: 'glutes', weight: 1 },
@@ -174,6 +167,8 @@ export const EXERCISES: Exercise[] = [
     ],
   },
 ];
+
+export const EXERCISES: Exercise[] = [...BASIC, ...CH4, ...CH5];
 
 export function fullPose(p: Partial<Pose>): Pose {
   return { ...NEUTRAL, ...p };

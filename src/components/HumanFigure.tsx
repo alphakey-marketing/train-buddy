@@ -2,7 +2,7 @@ import { useRef, MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber/native';
 import * as THREE from 'three';
 import { MuscleId } from '../data/muscles';
-import { HIP_HEIGHT, Pose, pelvisDrop, SHIN, THIGH } from '../lib/pose';
+import { Pose, rootHeight, SHIN, THIGH } from '../lib/pose';
 
 export type Intensity = Partial<Record<MuscleId, number>>;
 
@@ -63,11 +63,16 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
   const rHip = useRef<THREE.Group>(null);
   const lKn = useRef<THREE.Group>(null);
   const rKn = useRef<THREE.Group>(null);
+  const lAn = useRef<THREE.Group>(null);
+  const rAn = useRef<THREE.Group>(null);
 
   useFrame(() => {
     const p = poseRef.current;
     const set = (g: THREE.Group | null, r: [number, number, number]) => g?.rotation.set(r[0], r[1], r[2]);
-    if (root.current) root.current.position.y = HIP_HEIGHT - pelvisDrop(p);
+    if (root.current) {
+      root.current.position.set(p.shift, rootHeight(p), 0);
+      root.current.rotation.set(p.tilt, p.twist, 0);
+    }
     set(spine.current, p.spine);
     set(neck.current, p.neck);
     set(lSh.current, p.lShoulder);
@@ -78,6 +83,8 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
     set(rHip.current, p.rHip);
     set(lKn.current, [p.lKnee, 0, 0]);
     set(rKn.current, [p.rKnee, 0, 0]);
+    set(lAn.current, [p.lAnkle, 0, 0]);
+    set(rAn.current, [p.rAnkle, 0, 0]);
   });
 
   const M = (id: MuscleId, position: [number, number, number], scale: [number, number, number]) => (
@@ -100,7 +107,7 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
     </group>
   );
 
-  const leg = (side: 1 | -1, hip: typeof lHip, knee: typeof lKn) => (
+  const leg = (side: 1 | -1, hip: typeof lHip, knee: typeof lKn, ankle: typeof lAn) => (
     <group ref={hip} position={[0.1 * side, 0, 0]}>
       <Limb length={THIGH - 0.14} radius={0.07} y={-THIGH / 2} />
       {M('quads', [0, -0.2, 0.045], [0.065, 0.16, 0.05])}
@@ -108,10 +115,13 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
       <group ref={knee} position={[0, -THIGH, 0]}>
         <Limb length={SHIN - 0.12} radius={0.055} y={-SHIN / 2} />
         {M('calves', [0, -0.13, -0.04], [0.05, 0.11, 0.04])}
-        <mesh position={[0, -SHIN - 0.01, 0.05]}>
-          <boxGeometry args={[0.09, 0.05, 0.22]} />
-          <meshStandardMaterial color={SKIN} />
-        </mesh>
+        <group ref={ankle} position={[0, -SHIN, 0]}>
+          <mesh position={[0, -0.01, 0.05]}>
+            <boxGeometry args={[0.09, 0.05, 0.22]} />
+            <meshStandardMaterial color={SKIN} />
+          </mesh>
+          {M('feet', [0, -0.03, 0.06], [0.055, 0.03, 0.1])}
+        </group>
       </group>
     </group>
   );
@@ -125,6 +135,8 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
       </mesh>
       {M('glutes', [0.075, -0.04, -0.09], [0.08, 0.085, 0.06])}
       {M('glutes', [-0.075, -0.04, -0.09], [0.08, 0.085, 0.06])}
+      {M('psoas', [0.06, 0.02, 0.105], [0.04, 0.08, 0.03])}
+      {M('psoas', [-0.06, 0.02, 0.105], [0.04, 0.08, 0.03])}
 
       <group ref={spine} position={[0, 0.05, 0]}>
         <mesh position={[0, 0.27, 0]} scale={[1.25, 1, 0.75]}>
@@ -134,6 +146,8 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
         {M('traps', [0, 0.49, -0.07], [0.15, 0.07, 0.05])}
         {M('lats', [0.11, 0.32, -0.085], [0.07, 0.14, 0.045])}
         {M('lats', [-0.11, 0.32, -0.085], [0.07, 0.14, 0.045])}
+        {M('rotatorCuff', [0.14, 0.42, -0.1], [0.06, 0.05, 0.03])}
+        {M('rotatorCuff', [-0.14, 0.42, -0.1], [0.06, 0.05, 0.03])}
         {M('erectors', [0.04, 0.17, -0.105], [0.032, 0.14, 0.03])}
         {M('erectors', [-0.04, 0.17, -0.105], [0.032, 0.14, 0.03])}
         {M('chest', [0.08, 0.41, 0.095], [0.08, 0.06, 0.035])}
@@ -154,8 +168,8 @@ export function HumanFigure({ poseRef, intensityRef }: Props) {
         {arm(-1, rSh, rEl)}
       </group>
 
-      {leg(1, lHip, lKn)}
-      {leg(-1, rHip, rKn)}
+      {leg(1, lHip, lKn, lAn)}
+      {leg(-1, rHip, rKn, rAn)}
     </group>
   );
 }
