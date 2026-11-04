@@ -21,6 +21,7 @@ type Props = {
   view: ViewAngle;
   onCue: (cue: string) => void;
   onRep: (reps: number) => void;
+  glow?: Intensity; // 有值就用呢個固定發光（身體地圖），唔跟動作
 };
 
 function CameraRig({ view }: { view: ViewAngle }) {
@@ -36,7 +37,7 @@ function CameraRig({ view }: { view: ViewAngle }) {
   return null;
 }
 
-function Coach({ exercise, playing, speed, onCue, onRep }: Omit<Props, 'view'>) {
+function Coach({ exercise, playing, speed, onCue, onRep, glow }: Omit<Props, 'view'>) {
   const poseRef = useRef<Pose>({ ...NEUTRAL });
   const intensityRef = useRef<Intensity>({});
   const time = useRef(0);
@@ -71,7 +72,7 @@ function Coach({ exercise, playing, speed, onCue, onRep }: Omit<Props, 'view'>) 
     const effort = a.effort + (b.effort - a.effort) * Math.min(1, Math.max(0, k));
     const next: Intensity = {};
     for (const m of exercise.muscles) next[m.id] = m.weight * (0.25 + 0.75 * effort);
-    intensityRef.current = next;
+    intensityRef.current = glow ?? next;
 
     // Show the cue of the movement we're heading into.
     const cue = b.cue;

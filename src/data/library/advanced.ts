@@ -1,8 +1,7 @@
-// 身體操作書 ch5「發展動作庫」：Phase 2 四要素（傳遞、伸張反射、反力、位置能量）+ Phase 3 複合
-// 移動類動作（行、跑、跳）喺原地做，橫向動作用 shift 簡單表示。
-import { Exercise, P } from '../types';
+// 進階動作姿勢庫：發力傳遞、反彈、落地同複合動作
+// 移動類動作喺原地做，橫向動作用 shift 簡單表示。
+import { Motion, P } from '../types';
 
-const SAFETY = '有傷或者企唔穩即停，唔好谷住做。';
 
 const armsUpTiptoe = P({
   lShoulder: [-3.0, 0, -0.08],
@@ -92,15 +91,10 @@ const punch = P({
 
 const stance = P({ lHip: [-0.1, 0, 0.12], rHip: [-0.1, 0, -0.12], lKnee: 0.25, rKnee: 0.25 });
 
-export const CH5: Exercise[] = [
-  // ───── Phase 2：力嘅傳遞 ─────
+export const ADVANCED: Motion[] = [
+  // ───── 力嘅傳遞 ─────
   {
     id: 'tiptoe-overhead-walk',
-    name: '舉手踮腳步行',
-    kind: '傳遞',
-    group: 'p2',
-    source: 'ch5-01',
-    target: '由腳到頭頂嘅力傳遞，拇趾球支撐',
     muscles: [
       { id: 'feet', weight: 1 },
       { id: 'abs', weight: 0.5 },
@@ -108,14 +102,6 @@ export const CH5: Exercise[] = [
       { id: 'shoulders', weight: 0.4 },
       { id: 'calves', weight: 0.3 },
     ],
-    steps: [
-      '十指交叉，手心反轉向上，舉高雙手。',
-      '踮起腳尖，手、頭頂、肛門、腳尖成一條垂直線。腳踭盡量提高，淨用拇趾球掂地。',
-      '保持姿勢行路，步幅同速度跟拇趾球撐到嘅範圍，唔使快。熟咗望遠處行。',
-    ],
-    checks: ['拇趾球落地嗰下，要有骨由頭到腳連成一線嘅感覺。', '小腿攰即係做錯。'],
-    why: '拇趾球推地嗰下，力要冇浪費咁傳去全身，先可以唔失平衡咁郁。練「力嘅傳遞」同反力意識。',
-    caution: '平衡要求高，企唔穩就扶牆。' + SAFETY,
     keyframes: [
       { at: 0, pose: armsUpTiptoe, effort: 0.6, cue: '舉高雙手，踮腳，成一條直線' },
       { at: 0.8, pose: { ...armsUpTiptoe, lHip: [-0.35, 0, 0], lKnee: 0.4, rHip: [0.1, 0, 0] }, effort: 0.8, cue: '用拇趾球行，唔使快' },
@@ -126,11 +112,6 @@ export const CH5: Exercise[] = [
   },
   {
     id: 'squat-shift-support',
-    name: '蹲踞移重心撐體',
-    kind: '傳遞',
-    group: 'p2',
-    source: 'ch5-02',
-    target: '後腋深層筋群承托全身、重心移動感知',
     muscles: [
       { id: 'lats', weight: 1 },
       { id: 'rotatorCuff', weight: 0.7 },
@@ -138,14 +119,6 @@ export const CH5: Exercise[] = [
       { id: 'abs', weight: 0.5 },
       { id: 'shoulders', weight: 0.4 },
     ],
-    steps: [
-      '閉蹲踞：曲膝落腰，膝輕輕閉埋，骨盆立起，上身垂直，用拇趾球撐。',
-      '雙手撐地，膝放喺手肘略上嘅位置。',
-      '慢慢將重心移前，乘晒全身重量，腳自然浮起。',
-    ],
-    checks: ['唔係主動想浮起腳，係細緻移重心，腳自然浮。', '手指輕輕張開，腳踝放鬆。', '太難可以做「青蛙式」：用大腿內側撐住手肘。'],
-    why: '唔淨係手力訓練，而係練後腋承托全身嘅感覺同重心感知。淨係練手臂肌力冇呢個效果。',
-    caution: '手腕或者肩有傷即停，或者先做青蛙式。',
     keyframes: [
       { at: 0, pose: {}, effort: 0.1, cue: '企定' },
       { at: 1.6, pose: deepSquat, effort: 0.4, cue: '閉蹲踞，拇趾球撐，雙手撐地' },
@@ -155,24 +128,15 @@ export const CH5: Exercise[] = [
       { at: 7, pose: {}, effort: 0.1, cue: '企返起身' },
     ],
   },
-  // ───── Phase 2：伸張反射 ─────
+  // ───── 伸張反射 ─────
   {
     id: 'single-arm-drop-rebound',
-    name: '單臂跌落反彈',
-    kind: '反射',
-    group: 'p2',
-    source: 'ch5-03',
-    target: '回旋系伸張反射（揈手臂）',
     muscles: [
       { id: 'shoulders', weight: 0.8 },
       { id: 'lats', weight: 0.6 },
       { id: 'rotatorCuff', weight: 0.5 },
       { id: 'obliques', weight: 0.4 },
     ],
-    steps: ['手心向面，舉高一隻手。', '抽走手肘嘅力，手臂跌落，膝都輕輕抽力。', '跌落嘅反動令手臂自然彈返上嚟，跟住再跌落。兩邊都做。'],
-    checks: ['跌落時手心保持向面，先易引出「彈起+回旋」。', '交畀反彈自己發生，唔好自己郁。'],
-    why: '練嘅唔係手力，而係跌落引發嘅伸張反射。棒球、網球呢類快速揈手嘅動作離唔開佢。',
-    caution: '肩有傷即停。',
     keyframes: [
       { at: 0, pose: {}, effort: 0.1, cue: '企定' },
       { at: 1.2, pose: { rShoulder: [-2.9, 0, -0.05], rElbow: [-0.3, 0, 0] }, effort: 0.6, cue: '手心向面，舉高右手' },
@@ -185,24 +149,12 @@ export const CH5: Exercise[] = [
   },
   {
     id: 'spine-spiral-arm-swing',
-    name: '背骨螺旋揈臂',
-    kind: '反射',
-    group: 'p2',
-    source: 'ch5-04',
-    target: '體幹回旋帶動手臂嘅伸張反射',
     muscles: [
       { id: 'obliques', weight: 1 },
       { id: 'erectors', weight: 0.6 },
       { id: 'lats', weight: 0.5 },
       { id: 'shoulders', weight: 0.3 },
     ],
-    steps: [
-      '股關節略曲，背骨快速左右回旋，不停切換方向。開頭慢，雙手好似冇力咁被揈。',
-      '慢慢加快切換嘅速度同節奏，切返越嚟越利落。',
-    ],
-    checks: ['意象係「手鼓」：粒珠跟手柄轉自然打鼓面。', '手腕方向跟動作自然改變。', '手臂越嚟越自然加速、似飛出去；切返嗰下手臂纏住體幹。'],
-    why: '練體幹帶動手臂嘅連動性，靠背骨回旋引發伸張反射，手臂係被「甩」出去，唔係自己揈。',
-    caution: '腰背有傷即停，唔好谷腰。',
     keyframes: [
       { at: 0, pose: { lHip: [-0.2, 0, 0.05], rHip: [-0.2, 0, -0.05], lKnee: 0.25, rKnee: 0.25 }, effort: 0.2, cue: '股關節略曲，雙手放鬆' },
       { at: 0.7, pose: { lHip: [-0.2, 0, 0.05], rHip: [-0.2, 0, -0.05], lKnee: 0.25, rKnee: 0.25, spine: [0.05, 0.6, 0], lShoulder: [0.5, 0, 0.5], rShoulder: [-1.0, 0, 0.5], rElbow: [-0.4, 0, 0] }, effort: 0.6, cue: '背骨轉左，手被揈' },
@@ -214,28 +166,15 @@ export const CH5: Exercise[] = [
       { at: 3.8, pose: { lHip: [-0.2, 0, 0.05], rHip: [-0.2, 0, -0.05], lKnee: 0.25, rKnee: 0.25 }, effort: 0.2, cue: '慢返落嚟' },
     ],
   },
-  // ───── Phase 2：反力 ─────
+  // ───── 反力 ─────
   {
     id: 'hip-catch-reaction',
-    name: '股關節接反力預備',
-    kind: '反力',
-    group: 'p2',
-    source: 'ch5-05',
-    target: '用股關節接住地面反力',
     muscles: [
       { id: 'glutes', weight: 1 },
       { id: 'psoas', weight: 0.8 },
       { id: 'hamstrings', weight: 0.6 },
       { id: 'feet', weight: 0.4 },
     ],
-    steps: [
-      '雙手分別按住心口窩同鼠蹊部，重心移去訓練嗰隻腳，佢要承住 7-8 成體重。',
-      '一瞬間抽走膝力，輕微跌落。',
-      '即刻提起同一隻膝，將隻腳「叩」落地，用股關節接住反彈返嚟嘅反力。兩邊都做。',
-    ],
-    checks: ['唔係「提起再放低」，係叩落地嘅一下。', '兩肩保持水平。', '常見錯：叩地時腳踭甩去後面；重心亂移。'],
-    why: '反力係外面反彈返嚟嘅力，要用股關節準確接住，唔好喺膝或者腰漏走。練得好，高出力動作唔使咁靠肌力。',
-    caution: '膝或者髖有傷即停。',
     keyframes: [
       { at: 0, pose: plexusGroin, effort: 0.2, cue: '手按心口窩同鼠蹊部' },
       { at: 1.2, pose: { ...plexusGroin, spine: [0, 0, -0.05], lHip: [0, 0, -0.04], rHip: [0, 0, 0.04] }, effort: 0.5, cue: '重心移去左腳，承 7-8 成體重' },
@@ -248,21 +187,12 @@ export const CH5: Exercise[] = [
   },
   {
     id: 'tiptoe-heel-drop',
-    name: '踮腳脫力落地',
-    kind: '反力',
-    group: 'p2',
-    source: 'ch5-06',
-    target: '將落地衝擊（反力）完整傳去頭頂',
     muscles: [
       { id: 'feet', weight: 1 },
       { id: 'erectors', weight: 0.5 },
       { id: 'glutes', weight: 0.4 },
       { id: 'calves', weight: 0.3 },
     ],
-    steps: ['雙腳開肩闊，左右體重平均。緊張可以輕輕搖身脫力。', '踮起腳尖，穩定之後急速抽走腳踝力，用腳踭著地。重複。'],
-    checks: ['著地衝擊要傳到頭頂，越強越好。', '傳唔到就檢查背骨、骨盆、股關節嘅位置。', '膝、腰、頸感到衝擊即係反力中途散咗，做錯。'],
-    why: '練「冇浪費咁用反力」：準確捉住反力嘅大小同方向，先唔會漏走。',
-    caution: '腰頸有傷即停，衝擊太大唔舒服就調細。',
     keyframes: [
       { at: 0, pose: { lHip: [0, 0, 0.08], rHip: [0, 0, -0.08] }, effort: 0.2, cue: '開肩闊，體重平均' },
       { at: 1.2, pose: { lHip: [0, 0, 0.08], rHip: [0, 0, -0.08], lAnkle: 0.8, rAnkle: 0.8 }, effort: 0.7, cue: '踮起腳尖，拇趾球撐' },
@@ -271,24 +201,15 @@ export const CH5: Exercise[] = [
       { at: 3.2, pose: { lHip: [0, 0, 0.08], rHip: [0, 0, -0.08] }, effort: 0.2, cue: '膝腰頸唔應該覺得震' },
     ],
   },
-  // ───── Phase 2：位置能量 ─────
+  // ───── 位置能量 ─────
   {
     id: 'drop-step-stamp',
-    name: '抽腳跌落叩地',
-    kind: '位置能量',
-    group: 'p2',
-    source: 'ch5-07',
-    target: '位置能量轉做運動能量（垂直）',
     muscles: [
       { id: 'hamstrings', weight: 1 },
       { id: 'glutes', weight: 0.8 },
       { id: 'psoas', weight: 0.5 },
       { id: 'feet', weight: 0.5 },
     ],
-    steps: ['單腳企，盡量抽走多餘繃緊，搖晃都 OK。', '支撐腳急速脫力向後抽，全身跌落，前腳大力叩落地。兩邊都做。'],
-    checks: ['結果係兩腳前後打開。', '著地時支撐腳膝頭唔好曲太深，保持高位。', '膝落太低，大腿前側會繃緊。'],
-    why: '身體係「跌落」唔係「揈落」，位置能量變成加速。冇用揈腳嘅肌力，都可以產生大力。',
-    caution: '膝或者腳踝有傷即停。',
     keyframes: [
       { at: 0, pose: oneLeg, effort: 0.2, cue: '左腳企，右膝提起' },
       { at: 1.6, pose: oneLeg, effort: 0.2, cue: '抽走多餘繃緊' },
@@ -300,21 +221,12 @@ export const CH5: Exercise[] = [
   },
   {
     id: 'drop-propel-start',
-    name: '跌落推進起步',
-    kind: '位置能量',
-    group: 'p2',
-    source: 'ch5-08',
-    target: '位置能量轉做水平推進力',
     muscles: [
       { id: 'hamstrings', weight: 1 },
       { id: 'glutes', weight: 0.8 },
       { id: 'psoas', weight: 0.6 },
       { id: 'calves', weight: 0.3 },
     ],
-    steps: ['雙臂舉高（唔使繃直），手臂脫力跌落，順勢抽走一隻腳。', '即刻抽埋另一隻腳，全身被拋向前，順勢行幾步。兩邊都做。'],
-    checks: ['腳係「抽」，唔係向前踏。', '膝唔好曲太深，用腳尖撐。', '要有「颼一聲加速」、蹬地時間好短嘅感覺。'],
-    why: '唔靠蹬地，而係靠跌落瞬間起步。足球、籃球嘅快速選手好多都有呢種感覺。',
-    caution: '場地要夠闊、夠乾淨。膝或者腳踝有傷即停。',
     keyframes: [
       { at: 0, pose: {}, effort: 0.1, cue: '企定' },
       { at: 1.2, pose: { lShoulder: [-2.8, 0, 0.1], rShoulder: [-2.8, 0, -0.1], lAnkle: 0.3, rAnkle: 0.3 }, effort: 0.4, cue: '雙臂舉高，唔使繃直' },
@@ -325,27 +237,15 @@ export const CH5: Exercise[] = [
       { at: 3.6, pose: {}, effort: 0.1, cue: '返回起點，換邊再做' },
     ],
   },
-  // ───── Phase 3：複合 ─────
+  // ───── 複合 ─────
   {
     id: 'half-squat-rebound',
-    name: '半蹲反彈企身',
-    kind: '複合',
-    group: 'p3',
-    source: 'ch5-09',
-    target: '用反力同伸張反射企身，唔靠腳力',
     muscles: [
       { id: 'glutes', weight: 1 },
       { id: 'hamstrings', weight: 0.8 },
       { id: 'erectors', weight: 0.5 },
       { id: 'quads', weight: 0.3 },
     ],
-    steps: [
-      '兩腳打開蹲低，主要用上半身帶動細幅上下郁，感受身體連結同反力。',
-      '用上下郁儲落嘅勢，一瞬間將力撞落地，借地面反彈令身體自己浮起，企返起身。',
-    ],
-    checks: ['膝周圍肌肉盡量唔用力，腳位置唔郁。', '頭喺腳眼正上方，背挺直，唔好圓腰。', '覺得用腳力企起身即係做錯。'],
-    why: '細幅上下郁引出推地反力同伸張反射，畀反力「郁返自己」，明明冇用腳力，身體自己浮起。',
-    caution: '膝有舊患要特別小心，幅度細啲。' + SAFETY,
     keyframes: [
       { at: 0, pose: {}, effort: 0.1, cue: '企定' },
       { at: 1.4, pose: wideSquat, effort: 0.5, cue: '兩腳打開蹲低' },
@@ -359,11 +259,6 @@ export const CH5: Exercise[] = [
   },
   {
     id: 'pelvis-rotation-punch',
-    name: '骨盤回旋出拳',
-    kind: '複合',
-    group: 'p3',
-    source: 'ch5-10',
-    target: '骨盤 → 背骨 → 肩胛 → 手嘅連續加速',
     muscles: [
       { id: 'obliques', weight: 1 },
       { id: 'glutes', weight: 0.8 },
@@ -371,14 +266,6 @@ export const CH5: Exercise[] = [
       { id: 'shoulders', weight: 0.6 },
       { id: 'triceps', weight: 0.4 },
     ],
-    steps: [
-      '擺拳擊架式：唔打嗰隻手（右手）稍為向前，左肩同左腰稍向後引，股關節略曲。',
-      '借地面反力令骨盤「自己回走」，背骨拉住肩胛、手肘先行，最後手急速飛出去。',
-      '右肩大力向後引，令左肩向前飛；打完最後一刻急停。',
-    ],
-    checks: ['感覺係用骨盤同背骨打拳，唔係用手臂。', '手臂有種被拋出去嘅被動感。', '唔好拖尾。'],
-    why: '整合推地反力、位置能量、由腳傳上嘅力，一瞬間經體幹傳到手。棒球、網球、羽毛球呢類末端急加速動作特別需要。',
-    caution: '腰有舊患要細力做，唔好谷盡。' + SAFETY,
     keyframes: [
       { at: 0, pose: {}, effort: 0.1, cue: '企定' },
       { at: 1.2, pose: guard, effort: 0.4, cue: '擺架式，左肩左腰向後引' },
@@ -391,11 +278,6 @@ export const CH5: Exercise[] = [
   },
   {
     id: 'drop-high-knee-jump',
-    name: '抽腳跌落高抬腿跳',
-    kind: '複合',
-    group: 'p3',
-    source: 'ch5-11',
-    target: '將落地反力即刻用落下一個動作（跳）',
     muscles: [
       { id: 'hamstrings', weight: 1 },
       { id: 'glutes', weight: 0.8 },
@@ -403,14 +285,6 @@ export const CH5: Exercise[] = [
       { id: 'feet', weight: 0.5 },
       { id: 'shoulders', weight: 0.3 },
     ],
-    steps: [
-      '單腳企，盡量抽走全身嘅力。軸腳好似「拍落地」咁急速脫力（同「抽腳跌落叩地」一樣）。',
-      '唔好放走落地嘅反動，借勢做高抬腿跳，膝盡量貼近胸口，手要利落咁揈。',
-      '太難可以將「脫力」同「跳」分開做，再慢慢連返。',
-    ],
-    checks: ['落地同跳都應該覺得用緊大髀後面。', '重點係順暢跳嘅時機，唔係谷力跳高。'],
-    why: '反力由腳接住，經股關節傳上上半身，先跳得又高又快。同運動場上嘅急起步、急停急轉直接相關。',
-    caution: '平地做。膝或者腳踝唔穩要特別小心，唔好勉強跳高。',
     keyframes: [
       { at: 0, pose: oneLeg, effort: 0.2, cue: '單腳企，抽走全身嘅力' },
       { at: 1.4, pose: oneLeg, effort: 0.2, cue: '準備……' },
@@ -422,24 +296,12 @@ export const CH5: Exercise[] = [
   },
   {
     id: 'drop-side-burst',
-    name: '抽前腳側衝跌落',
-    kind: '複合',
-    group: 'p3',
-    source: 'ch5-12',
-    target: '橫向起步嘅爆發同急停',
     muscles: [
       { id: 'glutes', weight: 1 },
       { id: 'hamstrings', weight: 0.8 },
       { id: 'obliques', weight: 0.5 },
       { id: 'feet', weight: 0.5 },
     ],
-    steps: [
-      '自然步幅企定，膝彎住。想向右郁，右腳就係支撐側。',
-      '抽走右腳（向右拉返），引發急速落下，借勢向右衝出去，之後急停。',
-    ],
-    checks: ['抽腳嗰下頭唔好郁。', '落下先，然後先一瞬間蹬地。', '冇用力蹬地，但身體被大力拋出去先啱。'],
-    why: '細幅動作入面引出四要素，「抽走」嗰一瞬就開始郁，令對手覺得你突然消失。足球、欖球起步急停好有用。',
-    caution: '鞋同地面唔好太滑，膝或者腳踝要穩。',
     keyframes: [
       { at: 0, pose: stance, effort: 0.2, cue: '自然企，膝彎住' },
       { at: 1.2, pose: stance, effort: 0.2, cue: '準備向右' },
@@ -452,24 +314,12 @@ export const CH5: Exercise[] = [
   },
   {
     id: 'single-leg-z-jump',
-    name: '單腳跌落Z字跳',
-    kind: '複合',
-    group: 'p3',
-    source: 'ch5-13',
-    target: '單腳脫力、接反力、傳力嘅時機',
     muscles: [
       { id: 'hamstrings', weight: 1 },
       { id: 'glutes', weight: 0.9 },
       { id: 'feet', weight: 0.6 },
       { id: 'shoulders', weight: 0.3 },
     ],
-    steps: [
-      '單腳企。舉起嗰隻腳嘅股關節急速脫力，一瞬間落下，腳被帶動向後拉，呢個係準備姿勢。',
-      '借落下嘅反動向斜前跳，用另一隻腳落地。重複，成 Z 字形前進。',
-    ],
-    checks: ['落下衝擊用大髀後面同腳掌接住。', '膝唔好向前推，用大髀後面，唔係大髀前面。', '手要用力揈。', '冇起伏（起步冇反動）即係做錯。'],
-    why: '用脫力製造落下，借反動拎反力去跳，手嘅反動都要用埋。睇落普通，但要用齊四要素先有效。',
-    caution: '單腳落地衝擊大，膝或者腳踝有舊患要小心，跳幅由細做起。',
     keyframes: [
       { at: 0, pose: { shift: 0.15, rHip: [-0.6, 0, 0], rKnee: 0.9, rAnkle: 0.3 }, effort: 0.2, cue: '左腳企' },
       { at: 0.8, pose: { shift: 0.15, spine: [0.3, 0, 0], lHip: [-0.4, 0, 0], lKnee: 0.4, rHip: [0.3, 0, 0], rKnee: 0.8, lShoulder: [0.4, 0, 0.1], rShoulder: [0.4, 0, -0.1] }, effort: 0.7, cue: '股關節脫力落下，大髀後面接住' },

@@ -2,39 +2,49 @@ import { MuscleId } from './muscles';
 import { Pose } from '../lib/pose';
 
 export type Keyframe = {
-  at: number; // seconds from start of one rep
+  at: number; // 一個循環入面第幾秒
   pose: Partial<Pose>;
-  effort: number; // 0..1, how hard the target muscles work at this moment
-  cue: string; // coaching cue shown on screen
+  effort: number; // 0..1，目標肌肉呢刻幾用力
+  cue: string; // 畫面同語音嘅提示
 };
 
-export type ExerciseKind = '伸展' | '訓練' | '活化' | '脫力' | '傳遞' | '反射' | '反力' | '位置能量' | '複合';
+export type ExerciseKind = '伸展' | '訓練' | '活化' | '放鬆' | '爆發';
 
-export type ExerciseGroup = 'basic' | 'p0' | 'p1' | 'p2' | 'p3';
+export type Level = 1 | 2 | 3; // 1 入門、2 初級、3 進階
 
-export type Exercise = {
+// 針對嘅身體位置（對應問卷嗰五個）
+export type Area = 'neck' | 'upper-back' | 'lower-back' | 'hips-legs' | 'wrist';
+
+// 純動作資料：姿勢 + 肌肉
+export type Motion = {
   id: string;
+  muscles: { id: MuscleId; weight: number }[]; // weight 1 = 主力，0.5 = 輔助
+  keyframes: Keyframe[]; // 最後一格要返到起點，先會循環
+};
+
+// 動作說明同標籤（自己寫，唔係抄書）
+export type Copy = {
   name: string;
   kind: ExerciseKind;
-  group: ExerciseGroup;
-  muscles: { id: MuscleId; weight: number }[]; // weight 1 = main, 0.5 = support
-  keyframes: Keyframe[]; // last keyframe should return to the first pose so it loops
-  // 以下係動作說明（身體操作書 ch4 / ch5），基本動作可以冇
-  source?: string; // 出處，例如「ch4-01」
-  target?: string; // 書入面講嘅目標部位（可能比 3D 肌肉更細）
-  steps?: string[];
-  checks?: string[]; // 檢查點 / NG
-  why?: string;
+  level: Level;
+  areas: Area[];
+  floor: boolean; // 要瞓地／坐地
+  desk: boolean; // 寫字樓企起身或者坐椅都做到
+  steps: string[];
+  checks?: string[]; // 做錯嘅徵兆
+  why: string;
   caution?: string;
 };
 
-export const GROUPS: { id: ExerciseGroup; label: string; sub: string }[] = [
-  { id: 'basic', label: '基本', sub: '基本伸展同訓練' },
-  { id: 'p0', label: '初級 P0', sub: 'Phase 0 基盤調整：足部、骨盆、肋骨、肩胛' },
-  { id: 'p1', label: '初級 P1', sub: 'Phase 1 搖動同落下：練脫力' },
-  { id: 'p2', label: '發展 P2', sub: 'Phase 2 四要素：傳遞、伸張反射、反力、位置能量' },
-  { id: 'p3', label: '發展 P3', sub: 'Phase 3 複合：四要素一齊用' },
-];
+export type Exercise = Motion & Copy;
+
+export const KIND_NOTE: Record<ExerciseKind, string> = {
+  伸展: '拉鬆緊咗嘅位',
+  訓練: '加強力量',
+  活化: '喚醒冇用開嘅肌肉',
+  放鬆: '輕輕搖、落力放低',
+  爆發: '快速發力同落地',
+};
 
 // 細 helper：寫姿勢時有型別檢查
 export const P = (p: Partial<Pose>): Partial<Pose> => p;

@@ -1,198 +1,132 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EXERCISES, ExerciseGroup, GROUPS } from './src/data/exercises';
-import { MUSCLES } from './src/data/muscles';
-import { TrainerScene, ViewAngle } from './src/components/TrainerScene';
+import { Area } from './src/data/types';
+import { Answers, computeTightness, Tightness } from './src/lib/bodyTest';
+import { addSession, sessions, streak } from './src/lib/history';
+import { prescribe } from './src/lib/prescribe';
+import { load, save, track } from './src/lib/storage';
+import { Done, RateAfter } from './src/screens/Finish';
+import Library from './src/screens/Library';
+import { Ask, BodyMap, Preview, Test, Welcome } from './src/screens/Onboarding';
+import { Player } from './src/screens/Player';
 
-const VIEWS: { id: ViewAngle; label: string }[] = [
-  { id: 'back', label: '背面' },
-  { id: 'side', label: '側面' },
-  { id: 'front', label: '正面' },
-];
-const SPEEDS = [0.5, 1, 1.5];
+type Profile = { pain: Area; answers: Answers; tightness: Tightness; at: number };
+type Screen = 'welcome' | 'ask' | 'test' | 'map' | 'preview' | 'play' | 'rate' | 'done' | 'library';
 
 export default function App() {
-  const [group, setGroup] = useState<ExerciseGroup>('basic');
-  const [exerciseId, setExerciseId] = useState(EXERCISES[0].id);
-  const [showInfo, setShowInfo] = useState(false);
-  const [playing, setPlaying] = useState(true);
-  const [view, setView] = useState<ViewAngle>('back');
-  const [speed, setSpeed] = useState(1);
-  const [cue, setCue] = useState('');
-  const [reps, setReps] = useState(0);
-  const exercise = EXERCISES.find((e) => e.id === exerciseId)!;
-  const list = EXERCISES.filter((e) => e.group === group);
-  const groupInfo = GROUPS.find((g) => g.id === group)!;
-  const hasInfo = !!(exercise.steps || exercise.why);
+  const [profile, setProfile] = useState<Profile | null>(() => load<Profile | null>('profile', null));
+  const [screen, setScreen] = useState<Screen>('welcome');
+  const [pain, setPain] = useState<Area>('neck');
+  const [before, setBefore] = useState(5);
+  const [after, setAfter] = useState(0);
+  const [reminder, setReminder] = useState<string | null>(() => load<string | null>('reminder', null));
 
-  const pickGroup = (g: ExerciseGroup) => {
-    setGroup(g);
-    const first = EXERCISES.find((e) => e.group === g);
-    if (first) setExerciseId(first.id);
+  useEffect(() => track('open'), []);
+
+  const routine = useMemo(() => (profile ? prescribe(profile.tightness, profile.pain) : []), [profile]);
+
+  const finishTest = (answers: Answers) => {
+    const p: Profile = { pain, answers, tightness: computeTightness(answers, pain), at: Date.now() };
+    save('profile', p);
+    setProfile(p);
+    track('test_done');
+    setScreen('map');
   };
 
+  const body = (() => {
+    switch (screen) {
+      case 'welcome':
+        return (
+          <Welcome
+            returning={!!profile}
+            onStart={() => {
+              if (profile) setScreen('map');
+              else {
+                track('test_start');
+                setScreen('ask');
+              }
+            }}
+          />
+        );
+      case 'ask':
+        return (
+          <Ask
+            onNext={(a, b) => {
+              setPain(a);
+              setBefore(b);
+              setScreen('test');
+            }}
+          />
+        );
+      case 'test':
+        return <Test onDone={finishTest} />;
+      case 'map':
+        return profile ? (
+          <BodyMap
+            tightness={profile.tightness}
+            onNext={() => setScreen('preview')}
+            onRetest={() => setScreen('ask')}
+            onLibrary={() => setScreen('library')}
+          />
+        ) : null;
+      case 'preview':
+        return (
+          <Preview
+            routine={routine}
+            onStart={() => {
+              track('routine_start');
+              setScreen('play');
+            }}
+            onBack={() => setScreen('map')}
+          />
+        );
+      case 'play':
+        return (
+          <Player
+            routine={routine}
+            onDone={() => {
+              track('routine_done');
+              setScreen('rate');
+            }}
+            onQuit={() => setScreen('map')}
+          />
+        );
+      case 'rate':
+        return (
+          <RateAfter
+            before={before}
+            onSubmit={(a) => {
+              setAfter(a);
+              addSession({ at: Date.now(), ids: routine.map((r) => r.exercise.id), before, after: a });
+              track('rate_after');
+              setScreen('done');
+            }}
+          />
+        );
+      case 'done':
+        return (
+          <Done
+            before={before}
+            after={after}
+            streakDays={streak(sessions())}
+            reminder={reminder}
+            onReminder={(t) => {
+              setReminder(t);
+              save('reminder', t);
+              track('reminder_set');
+            }}
+            onHome={() => setScreen('map')}
+          />
+        );
+      case 'library':
+        return <Library onBack={() => setScreen(profile ? 'map' : 'welcome')} />;
+    }
+  })();
+
   return (
-    <View style={styles.root}>
+    <>
       <StatusBar style="light" />
-
-      <View style={styles.stage}>
-        <TrainerScene
-          exercise={exercise}
-          playing={playing}
-          speed={speed}
-          view={view}
-          onCue={setCue}
-          onRep={setReps}
-        />
-
-        <View style={styles.header} pointerEvents="none">
-          <Text style={styles.kind}>
-            {exercise.kind}
-            {exercise.source ? `  ·  ${exercise.source}` : ''}
-          </Text>
-          <Text style={styles.title}>{exercise.name}</Text>
-          <Text style={styles.cue}>{cue}</Text>
-        </View>
-        <View style={styles.reps} pointerEvents="none">
-          <Text style={styles.repsNum}>{reps}</Text>
-          <Text style={styles.repsLabel}>次</Text>
-        </View>
-
-        <View style={styles.viewSwitch}>
-          {VIEWS.map((v) => (
-            <Pressable key={v.id} onPress={() => setView(v.id)} style={[styles.pill, view === v.id && styles.pillOn]}>
-              <Text style={[styles.pillText, view === v.id && styles.pillTextOn]}>{v.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.panel}>
-        {showInfo && hasInfo ? (
-          <ScrollView style={styles.info} contentContainerStyle={{ paddingBottom: 8 }}>
-            {exercise.target && <Text style={styles.infoTarget}>目標：{exercise.target}</Text>}
-            {exercise.steps && (
-              <>
-                <Text style={styles.section}>步驟</Text>
-                {exercise.steps.map((s, i) => (
-                  <Text key={i} style={styles.infoText}>
-                    {i + 1}. {s}
-                  </Text>
-                ))}
-              </>
-            )}
-            {exercise.checks && (
-              <>
-                <Text style={styles.section}>檢查點</Text>
-                {exercise.checks.map((c, i) => (
-                  <Text key={i} style={styles.infoText}>
-                    ✓ {c}
-                  </Text>
-                ))}
-              </>
-            )}
-            {exercise.why && (
-              <>
-                <Text style={styles.section}>點解要做</Text>
-                <Text style={styles.infoText}>{exercise.why}</Text>
-              </>
-            )}
-            {exercise.caution && <Text style={styles.infoCaution}>⚠️ {exercise.caution}</Text>}
-          </ScrollView>
-        ) : (
-          <>
-            <Text style={styles.section}>用緊嘅肌肉</Text>
-            <View style={styles.muscles}>
-              {exercise.muscles.map((m) => (
-                <View key={m.id} style={styles.muscle}>
-                  <View style={[styles.dot, { opacity: 0.35 + 0.65 * m.weight }]} />
-                  <Text style={styles.muscleText}>{MUSCLES[m.id].name}</Text>
-                  <Text style={styles.muscleSub}>{m.weight >= 1 ? '主要' : '輔助'}</Text>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.groupList}>
-          {GROUPS.map((g) => (
-            <Pressable key={g.id} onPress={() => pickGroup(g.id)} style={[styles.pill, group === g.id && styles.pillOn]}>
-              <Text style={[styles.pillText, group === g.id && styles.pillTextOn]}>{g.label}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        <Text style={styles.section}>{groupInfo.sub}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exList}>
-          {list.map((e) => (
-            <Pressable
-              key={e.id}
-              onPress={() => setExerciseId(e.id)}
-              style={[styles.exCard, e.id === exerciseId && styles.exCardOn]}
-            >
-              <Text style={styles.exKind}>{e.kind}</Text>
-              <Text style={styles.exName} numberOfLines={2}>
-                {e.name}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        <View style={styles.controls}>
-          <Pressable onPress={() => setPlaying((p) => !p)} style={styles.play}>
-            <Text style={styles.playText}>{playing ? '暫停' : '開始'}</Text>
-          </Pressable>
-          {hasInfo && (
-            <Pressable onPress={() => setShowInfo((v) => !v)} style={[styles.pill, showInfo && styles.pillOn]}>
-              <Text style={[styles.pillText, showInfo && styles.pillTextOn]}>說明</Text>
-            </Pressable>
-          )}
-          {SPEEDS.map((s) => (
-            <Pressable key={s} onPress={() => setSpeed(s)} style={[styles.pill, speed === s && styles.pillOn]}>
-              <Text style={[styles.pillText, speed === s && styles.pillTextOn]}>{s}x</Text>
-            </Pressable>
-          ))}
-        </View>
-      </View>
-    </View>
+      {body}
+    </>
   );
 }
-
-const ACCENT = '#ff3b30';
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#14161c' },
-  stage: { flex: 1 },
-  header: { position: 'absolute', top: 56, left: 20, right: 90 },
-  kind: { color: ACCENT, fontSize: 13, fontWeight: '600' },
-  title: { color: '#fff', fontSize: 28, fontWeight: '700', marginTop: 2 },
-  cue: { color: '#c9cfdb', fontSize: 16, marginTop: 8 },
-  reps: { position: 'absolute', top: 56, right: 20, alignItems: 'center' },
-  repsNum: { color: '#fff', fontSize: 34, fontWeight: '700' },
-  repsLabel: { color: '#8a92a3', fontSize: 12 },
-  viewSwitch: { position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', gap: 8 },
-  pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: '#262a33' },
-  pillOn: { backgroundColor: '#fff' },
-  pillText: { color: '#c9cfdb', fontSize: 14, fontWeight: '600' },
-  pillTextOn: { color: '#14161c' },
-  panel: { backgroundColor: '#1c1f27', padding: 16, paddingBottom: 32, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  section: { color: '#8a92a3', fontSize: 12, fontWeight: '600', marginBottom: 8, marginTop: 4 },
-  muscles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  muscle: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#262a33', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT },
-  muscleText: { color: '#fff', fontSize: 14 },
-  muscleSub: { color: '#8a92a3', fontSize: 11 },
-  exList: { gap: 10, paddingBottom: 12 },
-  groupList: { gap: 8, paddingBottom: 6 },
-  info: { maxHeight: 220, marginBottom: 8 },
-  infoTarget: { color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  infoText: { color: '#c9cfdb', fontSize: 14, lineHeight: 20, marginBottom: 4 },
-  infoCaution: { color: '#ffb340', fontSize: 13, lineHeight: 19, marginTop: 6 },
-  exCard: { minWidth: 92, maxWidth: 132, padding: 12, borderRadius: 14, backgroundColor: '#262a33', borderWidth: 2, borderColor: 'transparent' },
-  exCardOn: { borderColor: ACCENT },
-  exKind: { color: '#8a92a3', fontSize: 11 },
-  exName: { color: '#fff', fontSize: 16, fontWeight: '600', marginTop: 4 },
-  controls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  play: { flex: 1, backgroundColor: ACCENT, borderRadius: 999, paddingVertical: 12, alignItems: 'center' },
-  playText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});
