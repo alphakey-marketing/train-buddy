@@ -1,7 +1,7 @@
 // 「跟住做」：全屏公仔 + 倒數 + 語音提示 + 自動轉下一個
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Demo, DemoMode } from '../components/Demo';
+import { Demo, useDemoMode } from '../components/Demo';
 import { buzz, hush, pickVoice, say as speak, useScreenAwake, VoicePick } from '../lib/device';
 import { RoutineItem } from '../lib/prescribe';
 import { C } from '../ui/theme';
@@ -18,7 +18,7 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
   const [left, setLeft] = useState(READY);
   const [paused, setPaused] = useState(false);
   const [voice, setVoice] = useState(true);
-  const [mode, setMode] = useState<DemoMode>('2d');
+  const [mode, toggleMode] = useDemoMode();
   const [cue, setCue] = useState('');
   const [voiceInfo, setVoiceInfo] = useState<VoicePick | null | 'wait'>('wait');
   const voiceRef = useRef(voice);
@@ -132,7 +132,7 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
         <Pressable style={s.pill} onPress={() => setVoice((v) => !v)}>
           <Text style={s.pillText}>{voice ? '🔊' : '🔇'}</Text>
         </Pressable>
-        <Pressable style={s.pill} onPress={() => setMode((m) => (m === '2d' ? '3d' : '2d'))}>
+        <Pressable style={s.pill} onPress={toggleMode}>
           <Text style={s.pillText}>{mode === '2d' ? '3D' : '2D'}</Text>
         </Pressable>
       </View>

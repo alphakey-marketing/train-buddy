@@ -1,7 +1,7 @@
 // 新用家流程：歡迎 → 一問 → 身體測試 → 身體地圖 → 今日練習
-import { ReactNode, useState } from 'react';
+import { ReactNode, Suspense, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Figure2D } from '../components/Figure2D';
+import { Loading, TrainerScene } from '../components/Demo';
 import { EXERCISES } from '../data/exercises';
 import { Area } from '../data/types';
 import { Answers, AREAS, mapSummary, TESTS, Tightness, tightList } from '../lib/bodyTest';
@@ -10,18 +10,15 @@ import { Button, C, DISCLAIMER } from '../ui/theme';
 
 const IDLE = EXERCISES[0];
 
-// 2D 公仔（正面 + 背面）做背景，下面疊一張面板
+// 3D 公仔做背景，下面疊一張面板
 const noop = () => {};
-const CLOSE = { x: -0.6, y: -1.95, w: 1.2, h: 2.05 }; // 企定嘅公仔，框細啲放大
 function Backdrop({ glow, children, tall }: { glow?: Tightness; children: ReactNode; tall?: boolean }) {
-  const fig = (view: 'front' | 'back') => (
-    <Figure2D exercise={IDLE} playing={false} speed={1} view={view} onCue={noop} onRep={noop} glow={glow ?? {}} viewBox={CLOSE} />
-  );
   return (
     <View style={s.root}>
-      <View style={[s.stage, s.pair]}>
-        <View style={s.stage}>{fig('front')}</View>
-        <View style={s.stage}>{fig('back')}</View>
+      <View style={s.stage}>
+        <Suspense fallback={<Loading />}>
+          <TrainerScene exercise={IDLE} playing={false} speed={1} view="front" onCue={noop} onRep={noop} glow={glow} />
+        </Suspense>
       </View>
       <View style={[s.sheet, tall && { maxHeight: '62%' }]}>{children}</View>
     </View>
@@ -178,7 +175,6 @@ export function Preview({
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   stage: { flex: 1 },
-  pair: { flexDirection: 'row' },
   link: { alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 12 },
   linkText: { color: C.mute, fontSize: 13, textDecorationLine: 'underline' },
   sheet: { backgroundColor: C.panel, padding: 20, paddingBottom: 32, gap: 12, borderTopLeftRadius: 20, borderTopRightRadius: 20 },

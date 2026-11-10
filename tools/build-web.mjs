@@ -5,12 +5,16 @@ import { copyFileSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 execSync('npx expo export --platform web --clear', { stdio: 'inherit' });
 writeFileSync('dist/.nojekyll', '');
 copyFileSync('dist/index.html', 'dist/404.html');
-// 主程式預先存低；3D（TrainerScene）同模型太大，用到先存
+// 預先存低全部程式同 3D 模型（3D 係預設，冇網都要睇到）
 const js = readdirSync('dist/_expo/static/js/web')
-  .filter((f) => f.startsWith('index-') && f.endsWith('.js'))
+  .filter((f) => f.endsWith('.js'))
   .map((f) => `_expo/static/js/web/${f}`);
+const models = readdirSync('dist/assets', { recursive: true })
+  .map((f) => String(f).split(String.fromCharCode(92)).join('/'))
+  .filter((f) => f.endsWith('.glb'))
+  .map((f) => `assets/${f}`);
 const sw = readFileSync('dist/sw.js', 'utf8')
   .replace('train-buddy-__BUILD__', `train-buddy-${Date.now()}`)
-  .replace('__PRECACHE__', JSON.stringify(js));
+  .replace('__PRECACHE__', JSON.stringify([...js, ...models]));
 writeFileSync('dist/sw.js', sw);
 console.log('網頁版出好，喺 dist/');

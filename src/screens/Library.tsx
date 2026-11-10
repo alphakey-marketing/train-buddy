@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EXERCISES, Level } from '../data/exercises';
 import { MUSCLES } from '../data/muscles';
-import { Demo, DemoMode, DemoView } from '../components/Demo';
+import { Demo, DemoView, useDemoMode } from '../components/Demo';
 
 const VIEWS: { id: DemoView; label: string }[] = [
   { id: 'auto', label: '自動' },
@@ -22,7 +22,7 @@ export default function Library({ onBack }: { onBack: () => void }) {
   const [exerciseId, setExerciseId] = useState(EXERCISES[0].id);
   const [showInfo, setShowInfo] = useState(false);
   const [playing, setPlaying] = useState(true);
-  const [mode, setMode] = useState<DemoMode>('2d');
+  const [mode, toggleMode] = useDemoMode();
   const [view, setView] = useState<DemoView>('auto');
   const [speed, setSpeed] = useState(1);
   const [cue, setCue] = useState('');
@@ -63,7 +63,7 @@ export default function Library({ onBack }: { onBack: () => void }) {
           <Text style={styles.repsLabel}>次</Text>
         </View>
 
-        <Pressable onPress={() => setMode((m) => (m === '2d' ? '3d' : '2d'))} style={[styles.pill, styles.mode]}>
+        <Pressable onPress={toggleMode} style={[styles.pill, styles.mode]}>
           <Text style={styles.pillText}>{mode === '2d' ? '2D · 轉 3D' : '3D · 轉 2D'}</Text>
         </Pressable>
 
