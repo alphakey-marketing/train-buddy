@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { GLTF, GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Asset } from 'expo-asset';
 import { File } from 'expo-file-system';
-import MODEL from '../../assets/models/figure.glb';
+import MODEL from '../../assets/models/coach-f.glb';
 import { MuscleId } from '../data/muscles';
 import { NEUTRAL, Pose } from '../lib/pose';
 import { Rig, Segment } from '../lib/retarget';
@@ -55,15 +55,30 @@ const SPOTS: MuscleSpot[] = [
 const limbOf = (s: Segment) => (s === 'lArm' || s === 'lFore' ? 'L' : s === 'rArm' || s === 'rFore' ? 'R' : 'T');
 
 type Paint = {
-  color: THREE.BufferAttribute;
-  base: Float32Array; // 每點原本顏色（衫、褲、皮膚）
-  amt: Float32Array; // 每點今格發光幾多
+  glow: THREE.BufferAttribute; // 每點發光幾多（0–1），shader 讀
   spots: { id: MuscleId; idx: Uint32Array; w: Float32Array }[];
 };
 
-const skinMat = new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: 0.78, metalness: 0 });
+// 模型自帶貼圖；加一個 glow 屬性，喺貼圖上面混入發光色（深色褲都睇到）
+function glowMaterial(src: THREE.Material) {
+  const m = (src as THREE.MeshStandardMaterial).clone();
+  m.roughness = 0.82; // Tripo 貼圖太反光，似皮褲，調啞
+  m.metalness = 0;
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.glowColor = { value: new THREE.Color(SCENE.glow) };
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float glow;\nvarying float vGlow;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvGlow = glow;');
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 glowColor;\nvarying float vGlow;')
+      .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, glowColor, vGlow * 0.85);')
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += glowColor * vGlow * 0.25;');
+  };
+  m.customProgramCacheKey = () => 'glow';
+  return m;
+}
 
-// 靜止姿勢下，按骨頭同高度幫每點揀顏色，順手計每粒肌肉影響邊啲點
+// 靜止姿勢下，計每粒肌肉影響邊啲點
 function paint(mesh: THREE.SkinnedMesh, rig: Rig): Paint {
   const n = mesh.geometry.attributes.position.count;
   const J = {} as Record<Segment, THREE.Vector3>;
@@ -72,27 +87,9 @@ function paint(mesh: THREE.SkinnedMesh, rig: Rig): Paint {
   const skinIdx = mesh.geometry.attributes.skinIndex;
   const skinW = mesh.geometry.attributes.skinWeight;
   const bones = mesh.skeleton.bones;
-  const col = {
-    skin: new THREE.Color(SCENE.skin),
-    shirt: new THREE.Color(SCENE.shirt),
-    shorts: new THREE.Color(SCENE.shorts),
-    shoe: new THREE.Color(SCENE.shoe),
-  };
-  const waistY = J.spine0.y + 0.02;
-  const collarY = J.neck.y - 0.05;
-  const sleeveY = (J.lArm.y + J.rArm.y) / 2 - 0.13;
-  const hemY = (side: 'l' | 'r') => {
-    const hip = J[`${side}Thigh` as Segment].y;
-    const knee = J[`${side}Shin` as Segment].y;
-    return knee + 0.6 * (hip - knee);
-  };
-  const sockY = (J.lFoot.y + J.rFoot.y) / 2 + 0.07;
-
-  const base = new Float32Array(n * 3);
   const segOf: Segment[] = new Array(n);
   const pos: THREE.Vector3[] = new Array(n);
   const p = new THREE.Vector3();
-  const mix = new THREE.Color();
   for (let i = 0; i < n; i++) {
     // 邊條骨影響最大，就當呢點屬於邊段身體
     let best = 0;
@@ -104,45 +101,10 @@ function paint(mesh: THREE.SkinnedMesh, rig: Rig): Paint {
         best = skinIdx.getComponent(i, k);
       }
     }
-    const seg = rig.segmentOf(bones[best]);
+    segOf[i] = rig.segmentOf(bones[best]);
     p.fromBufferAttribute(mesh.geometry.attributes.position as THREE.BufferAttribute, i);
     mesh.applyBoneTransform(i, p);
-    p.applyMatrix4(mesh.matrixWorld);
-    pos[i] = p.clone();
-    segOf[i] = seg;
-
-    // 邊界唔好一刀切，±2.5cm 內慢慢混色，咁衫邊唔會鋸齒
-    const edge = (y: number, line: number) => Math.min(1, Math.max(0, (y - line) / 0.05 + 0.5));
-    const c = mix.copy(col.skin);
-    switch (seg) {
-      case 'hips':
-      case 'spine0':
-      case 'spine1':
-      case 'spine2':
-        c.copy(col.shorts).lerp(col.shirt, edge(p.y, waistY)).lerp(col.skin, edge(p.y, collarY));
-        break;
-      case 'lArm':
-      case 'rArm':
-        c.copy(col.skin).lerp(col.shirt, edge(p.y, sleeveY));
-        break;
-      case 'lThigh':
-      case 'rThigh':
-        c.copy(col.skin).lerp(col.shorts, edge(p.y, hemY(seg[0] as 'l' | 'r')));
-        break;
-      case 'lShin':
-      case 'rShin':
-        c.copy(col.skin).lerp(col.shoe, 1 - edge(p.y, sockY));
-        break;
-      case 'lFoot':
-      case 'rFoot':
-      case 'lToe':
-      case 'rToe':
-        c.copy(col.shoe);
-        break;
-    }
-    base[i * 3] = c.r;
-    base[i * 3 + 1] = c.g;
-    base[i * 3 + 2] = c.b;
+    pos[i] = p.applyMatrix4(mesh.matrixWorld).clone();
   }
 
   // 每粒肌肉：橢圓入面嘅點全光，出面慢慢淡
@@ -167,13 +129,13 @@ function paint(mesh: THREE.SkinnedMesh, rig: Rig): Paint {
     return { id, idx: Uint32Array.from(idx), w: Float32Array.from(ws) };
   });
 
-  const color = new THREE.BufferAttribute(base.slice(), 3);
-  color.setUsage(THREE.DynamicDrawUsage);
-  mesh.geometry.setAttribute('color', color);
-  return { color, base, amt: new Float32Array(n), spots };
+  const glow = new THREE.BufferAttribute(new Float32Array(n), 1);
+  glow.setUsage(THREE.DynamicDrawUsage);
+  mesh.geometry.setAttribute('glow', glow);
+  return { glow, spots };
 }
 
-// 載一次模型，順手起好骨架轉換同顏色（要喺未郁骨之前讀靜止姿勢）
+// 載一次模型，順手起好骨架轉換同發光（要喺未郁骨之前讀靜止姿勢）
 type Loaded = { gltf: GLTF; rig: Rig; paints: Paint[]; ends: THREE.Object3D[] };
 let loading: Promise<Loaded> | null = null;
 function loadFigure() {
@@ -191,7 +153,7 @@ function loadFigure() {
     gltf.scene.traverse((o) => {
       const mesh = o as THREE.SkinnedMesh;
       if (!mesh.isMesh) return;
-      mesh.material = skinMat;
+      mesh.material = Array.isArray(mesh.material) ? mesh.material.map(glowMaterial) : glowMaterial(mesh.material);
       // 趴低、坐低時原本個包圍球唔準，唔好裁走
       mesh.frustumCulled = false;
       if (mesh.isSkinnedMesh) paints.push(paint(mesh, rig));
@@ -205,29 +167,19 @@ function loadFigure() {
   return loading;
 }
 
-const glowCol = new THREE.Color(SCENE.glow);
-
 function recolor(pt: Paint, inten: Intensity) {
-  pt.amt.fill(0);
+  const amt = pt.glow.array as Float32Array;
+  amt.fill(0);
   for (const s of pt.spots) {
     const v = inten[s.id] ?? 0;
     if (v <= 0.02) continue;
     for (let k = 0; k < s.idx.length; k++) {
       const i = s.idx[k];
-      const a = s.w[k] * v;
-      if (a > pt.amt[i]) pt.amt[i] = a;
+      const a = Math.min(1, s.w[k] * v);
+      if (a > amt[i]) amt[i] = a;
     }
   }
-  const out = pt.color.array as Float32Array;
-  const { base, amt } = pt;
-  for (let i = 0; i < amt.length; i++) {
-    const a = Math.min(1, amt[i]) * 0.9;
-    const j = i * 3;
-    out[j] = base[j] + (glowCol.r - base[j]) * a;
-    out[j + 1] = base[j + 1] + (glowCol.g - base[j + 1]) * a;
-    out[j + 2] = base[j + 2] + (glowCol.b - base[j + 2]) * a;
-  }
-  pt.color.needsUpdate = true;
+  pt.glow.needsUpdate = true;
 }
 
 // 地上柔影：中間深，出面淡

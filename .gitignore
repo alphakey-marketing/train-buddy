@@ -39,5 +39,5 @@ yarn-error.*
 # generated native folders
 /ios
 /android
-tools/tripo_state.json
+tools/tripo_state*.json
 __pycache__/

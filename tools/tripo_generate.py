@@ -2,6 +2,7 @@
 
 用法（用 Blender 自帶 python 都得，只用標準庫）：
     python tools/tripo_generate.py [--dry-run]
+    python tools/tripo_generate.py --preset coach-f   # 正面+背面兩張圖，有貼圖
 
 Key 來源（按次序）：
     1. 環境變數 TRIPO_API_KEY
@@ -125,9 +126,30 @@ def download(url, name):
     return dest
 
 
+# 第二代教練：多張圖 + 貼圖（衫褲樣真），檔名分開，唔會蓋舊模型
+PRESETS = {
+    "coach-f": {
+        "views": {"front": "coach-f-front.png", "back": "coach-f-back.png"},
+        "gen": {
+            "model": "v3.1-20260211",
+            "texture": True,
+            "pbr": False,
+            "texture_quality": "standard",
+            "face_limit": 20000,
+            "auto_size": True,
+        },
+        "name": "coach-f",
+    },
+}
+
+
 def main():
-    global KEY
+    global KEY, STATE
     dry = "--dry-run" in sys.argv
+    preset = None
+    if "--preset" in sys.argv:
+        preset = PRESETS[sys.argv[sys.argv.index("--preset") + 1]]
+        STATE = os.path.join(ROOT, "tools", f"tripo_state_{preset['name']}.json")
     KEY = load_key()
     state = json.load(open(STATE)) if os.path.exists(STATE) else {}
     save = lambda: json.dump(state, open(STATE, "w"), indent=2)
@@ -138,21 +160,34 @@ def main():
         print("dry run：key 用得，唔扣 credit。")
         return
 
+    name = preset["name"] if preset else "figure"
+    ref = os.path.join(ROOT, "assets", "reference")
+
     # 1. 上載參考圖
-    if "file_token" not in state:
+    if preset:
+        for view, fn in preset["views"].items():
+            if f"tok_{view}" not in state:
+                state[f"tok_{view}"] = upload(os.path.join(ref, fn))
+                save()
+                print(f"上載咗 {view}")
+    elif "file_token" not in state:
         state["file_token"] = upload(IMAGE)
         save()
         print("上載咗參考圖")
 
     # 2. 生成模型
     if "gen_task" not in state:
-        d = request("POST", "/generation/image-to-model", {"input": state["file_token"], **GEN_BODY})
+        if preset:
+            inputs = [{v: {"file_token": state[f"tok_{v}"]}} for v in preset["views"]]
+            d = request("POST", "/generation/multiview-to-model", {"inputs": inputs, **preset["gen"]})
+        else:
+            d = request("POST", "/generation/image-to-model", {"input": state["file_token"], **GEN_BODY})
         state["gen_task"] = d["task_id"]
         save()
     g = wait(state["gen_task"], "生成")
     print(f"  用咗 {g.get('credits_consumed')} credits")
-    if not os.path.exists(os.path.join(OUT_DIR, "figure-raw.glb")):
-        download(model_url(g["output"]), "figure-raw.glb")
+    if not os.path.exists(os.path.join(OUT_DIR, f"{name}-raw.glb")):
+        download(model_url(g["output"]), f"{name}-raw.glb")
 
     # 3. 檢查綁唔綁到骨（官方建議先做）
     chk = request("POST", "/animations/rig-check", {"input": state["gen_task"]})
@@ -169,7 +204,7 @@ def main():
         save()
     r = wait(state["rig_task"], "綁骨")
     print(f"  用咗 {r.get('credits_consumed')} credits")
-    download(model_url(r["output"]), "figure.glb")
+    download(model_url(r["output"]), "figure.glb" if not preset else f"{name}-rigged.glb")
 
     bal = request("GET", "/account/balance")
     print(f"完成。餘額：{bal.get('balance')} credits")

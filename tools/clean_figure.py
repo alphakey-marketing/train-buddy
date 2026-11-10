@@ -1,5 +1,6 @@
 """執好 Tripo 綁骨模型：面向 app 前方、1.75m 高、腳底貼地。
-blender --background --python tools/clean_figure.py -- in.glb out.glb
+blender --background --python tools/clean_figure.py -- in.glb out.glb [--materials]
+--materials：保留貼圖（有衫褲嘅模型用）
 Tripo 出嘅模型面向 Blender +X；app 要面向 glTF +Z（= Blender -Y），左手 +X。
 """
 import math
@@ -8,7 +9,9 @@ import sys
 import bpy
 from mathutils import Matrix, Vector
 
-src, dst = sys.argv[sys.argv.index("--") + 1:][:2]
+args = sys.argv[sys.argv.index("--") + 1:]
+src, dst = args[:2]
+KEEP_MAT = "--materials" in args
 HEIGHT = 1.75
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -45,7 +48,9 @@ print("BBOX", tuple(round(v, 3) for v in lo), tuple(round(v, 3) for v in hi))
 for n in ("mixamorig:Hips", "mixamorig:LeftUpLeg", "mixamorig:LeftFoot", "mixamorig:LeftToeBase", "mixamorig:LeftHand", "mixamorig:Head"):
     print("BONE", n, tuple(round(v, 3) for v in arm.matrix_world @ arm.data.bones[n].head_local))
 
-body.data.materials.clear()
+if not KEEP_MAT:
+    body.data.materials.clear()
 bpy.ops.export_scene.gltf(filepath=dst, export_format="GLB", export_animations=False,
-                          export_skins=True, export_materials="NONE", export_yup=True)
+                          export_skins=True, export_materials="EXPORT" if KEEP_MAT else "NONE",
+                          export_image_format="JPEG", export_jpeg_quality=88, export_yup=True)
 print("EXPORTED", dst)

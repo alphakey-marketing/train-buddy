@@ -39,8 +39,8 @@ export type Pose = {
 export const NEUTRAL: Pose = {
   spine: [0, 0, 0],
   neck: [0, 0, 0],
-  lShoulder: [0, 0, 0.08],
-  rShoulder: [0, 0, -0.08],
+  lShoulder: [0, 0, 0.17], // 手微微打開，唔好插入大髀
+  rShoulder: [0, 0, -0.17],
   lElbow: [-0.1, 0, 0],
   rElbow: [-0.1, 0, 0],
   lHip: [0, 0, 0],
@@ -91,12 +91,12 @@ export function blendPose(a: Pose, b: Pose, t: number): Pose {
   };
 }
 
-// 尺寸由 assets/models/figure.glb 量出嚟（tools/measure_figure.py）。換模型要重新量。
-export const THIGH = 0.419;
-export const SHIN = 0.428;
+// 尺寸由 assets/models/coach-f.glb 量出嚟（tools/measure_figure.py）。換模型要重新量。
+export const THIGH = 0.403;
+export const SHIN = 0.427;
 // 腳掌尺寸：腳踝去拇趾球（向前）、腳踝離地（向下）
-export const BALL_Z = 0.123;
-export const SOLE = 0.106;
+export const BALL_Z = 0.143;
+export const SOLE = 0.113;
 export const HIP_HEIGHT = THIGH + SHIN + SOLE;
 // 坐地時髖關節離地高度
 export const SEAT_HEIGHT = 0.11;
