@@ -1,10 +1,12 @@
 // 離線用 service worker
 // 頁面：先上網拎新版，冇網先用 cache。其他檔案（JS、圖、模型）：有 cache 用 cache，冇先上網拎再存低。
-// BUILD 喺 build 時換成時間，每次發佈都係新 cache，舊嘢會清走。
-const CACHE = 'train-buddy-1794293321602';
+// CACHE 名喺 build 時加時間，每次發佈都係新 cache，舊嘢會清走。
+// PRECACHE 喺 build 時加主程式檔名：一裝好就存低，第二次開即刻有、冇網都用到。
+const CACHE = 'train-buddy-1794293880004';
+const PRECACHE = ['./', 'manifest.webmanifest', 'icon-192.png'].concat(["_expo/static/js/web/index-d2e5691fc207481a5e0eed53f3c23e5a.js"]);
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', 'manifest.webmanifest', 'icon-192.png'])));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));
   self.skipWaiting();
 });
 
