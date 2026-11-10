@@ -5,6 +5,7 @@ import { Loading, TrainerScene } from '../components/Demo';
 import { EXERCISES } from '../data/exercises';
 import { Area } from '../data/types';
 import { Answers, AREAS, mapSummary, TESTS, Tightness, tightList } from '../lib/bodyTest';
+import { streak, weekDays, WEEK_GOAL } from '../lib/history';
 import { RoutineItem, routineSeconds } from '../lib/prescribe';
 import { Button, C, DISCLAIMER } from '../ui/theme';
 
@@ -69,7 +70,7 @@ export function Scale({ value, onChange }: { value: number; onChange: (n: number
     <View style={s.scale}>
       {Array.from({ length: 11 }, (_, i) => (
         <Pressable key={i} onPress={() => onChange(i)} style={[s.dot, value === i && s.dotOn]}>
-          <Text style={[s.dotText, value === i && { color: '#fff' }]}>{i}</Text>
+          <Text style={[s.dotText, value === i && { color: C.onDark }]}>{i}</Text>
         </Pressable>
       ))}
     </View>
@@ -117,6 +118,7 @@ export function BodyMap({
   const list = tightList(tightness, 4);
   return (
     <Backdrop glow={tightness}>
+      <Progress />
       <Text style={s.h2}>你嘅身體地圖</Text>
       <Text style={s.p}>{mapSummary(tightness)}</Text>
       <View style={s.wrap}>
@@ -136,6 +138,32 @@ export function BodyMap({
         <Text style={s.linkText}>備份紀錄</Text>
       </Pressable>
     </Backdrop>
+  );
+}
+
+// 連續日數 + 今個星期做咗幾日
+const WEEK = ['一', '二', '三', '四', '五', '六', '日'];
+function Progress() {
+  const n = streak();
+  const week = weekDays();
+  const done = week.filter(Boolean).length;
+  return (
+    <View style={s.prog}>
+      <View style={{ flex: 1 }}>
+        <Text style={s.progBig}>{n > 0 ? `🔥 連續 ${n} 日` : '今日開始第 1 日'}</Text>
+        <Text style={s.progSub}>
+          今個星期 {done}/{WEEK_GOAL} 日{done >= WEEK_GOAL ? ' · 達標 🎉' : ''}
+        </Text>
+      </View>
+      <View style={s.week}>
+        {WEEK.map((d, i) => (
+          <View key={d} style={s.day}>
+            <View style={[s.dayDot, week[i] && s.dayOn]} />
+            <Text style={s.dayText}>{d}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -185,9 +213,9 @@ const s = StyleSheet.create({
   fine: { color: C.mute, fontSize: 12, lineHeight: 18 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999, backgroundColor: C.card },
-  chipOn: { backgroundColor: '#fff' },
+  chipOn: { backgroundColor: C.text },
   chipText: { color: C.sub, fontSize: 15, fontWeight: '600' },
-  chipTextOn: { color: C.bg },
+  chipTextOn: { color: C.onDark },
   scale: { flexDirection: 'row', justifyContent: 'space-between' },
   dot: { width: 28, height: 28, borderRadius: 14, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center' },
   dotOn: { backgroundColor: C.accent },
@@ -196,6 +224,14 @@ const s = StyleSheet.create({
   tagDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent },
   tagText: { color: C.text, fontSize: 14 },
   row: { flexDirection: 'row', gap: 8 },
+  prog: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.bg, borderRadius: 16, padding: 12 },
+  progBig: { color: C.text, fontSize: 17, fontWeight: '800' },
+  progSub: { color: C.mute, fontSize: 12, marginTop: 2 },
+  week: { flexDirection: 'row', gap: 6 },
+  day: { alignItems: 'center', gap: 3 },
+  dayDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: C.line },
+  dayOn: { backgroundColor: C.calm },
+  dayText: { color: C.mute, fontSize: 10 },
   half: { flex: 1 },
   item: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   itemNum: { color: C.accent, fontSize: 18, fontWeight: '800', width: 22 },

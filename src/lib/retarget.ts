@@ -62,6 +62,12 @@ export class Rig {
   private hipsParentInv = new THREE.Matrix4();
   readonly seg = {} as Record<Segment, THREE.Quaternion>;
   readonly bones = {} as Record<Segment, THREE.Bone>;
+  private segOfBone = new Map<THREE.Object3D, Segment>();
+
+  // 呢條骨屬於邊段身體（手指、鎖骨跟返上一級）
+  segmentOf(bone: THREE.Object3D): Segment {
+    return this.segOfBone.get(bone) ?? 'hips';
+  }
 
   constructor(root: THREE.Object3D) {
     root.updateMatrixWorld(true);
@@ -92,6 +98,7 @@ export class Rig {
         world: new THREE.Quaternion(),
       };
       byBone.set(bone, e);
+      this.segOfBone.set(bone, e.seg);
       this.entries.push(e);
     });
     const hips = this.entries.find((e) => boneKey(e.bone.name) === 'Hips');

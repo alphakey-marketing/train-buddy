@@ -85,24 +85,22 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
 
   const total = routine.reduce((n, r) => n + r.seconds, 0);
 
+  const doneSec = routine.slice(0, idx).reduce((n, r) => n + r.seconds, 0) + (phase === 'go' ? item.seconds - left : 0);
+
+  // 上：名同提示；中：公仔；下：倒數同掣。三格分開，唔會遮住公仔
   return (
     <View style={s.root}>
-      <Demo
-        mode={mode}
-        exercise={item.exercise}
-        playing={phase === 'go' && !paused}
-        speed={1}
-        view={mode === '2d' ? 'auto' : 'front'}
-        onCue={onCue}
-        onRep={() => {}}
-      />
-
-      <View style={s.top} pointerEvents="none">
+      <View style={s.top}>
+        <View style={s.bar}>
+          <View style={[s.fill, { width: `${(doneSec / total) * 100}%` }]} />
+        </View>
         <Text style={s.step}>
           {idx + 1} / {routine.length} · {item.exercise.kind}
         </Text>
         <Text style={s.title}>{item.exercise.name}</Text>
-        <Text style={s.cue}>{phase === 'ready' ? item.exercise.steps[0] : cue}</Text>
+        <Text style={s.cue} numberOfLines={2}>
+          {phase === 'ready' ? item.exercise.steps[0] : cue}
+        </Text>
         {voice && voiceInfo !== 'wait' && !voiceInfo?.cantonese && (
           <Text style={s.warn}>
             {voiceInfo ? `部機冇廣東話語音，用緊：${voiceInfo.name}` : '部機冇中文語音，只會顯示文字'}
@@ -110,31 +108,43 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
         )}
       </View>
 
-      <View style={s.center} pointerEvents="none">
-        <Text style={s.big}>{phase === 'ready' ? `準備 ${Math.max(0, left)}` : Math.max(0, left)}</Text>
-        {next && <Text style={s.next}>下一個：{next.exercise.name}</Text>}
+      <View style={s.stage}>
+        <Demo
+          mode={mode}
+          exercise={item.exercise}
+          playing={phase === 'go' && !paused}
+          speed={1}
+          view={mode === '2d' ? 'auto' : 'front'}
+          onCue={onCue}
+          onRep={() => {}}
+          headroom={0.02}
+        />
       </View>
 
-      <View style={s.bar}>
-        <View style={[s.fill, { width: `${((routine.slice(0, idx).reduce((n, r) => n + r.seconds, 0) + (phase === 'go' ? item.seconds - left : 0)) / total) * 100}%` }]} />
-      </View>
-
-      <View style={s.controls}>
-        <Pressable style={s.pill} onPress={onQuit}>
-          <Text style={s.pillText}>結束</Text>
-        </Pressable>
-        <Pressable style={[s.pill, s.main]} onPress={() => setPaused((p) => !p)}>
-          <Text style={[s.pillText, { color: '#fff' }]}>{paused ? '繼續' : '暫停'}</Text>
-        </Pressable>
-        <Pressable style={s.pill} onPress={advance}>
-          <Text style={s.pillText}>跳過</Text>
-        </Pressable>
-        <Pressable style={s.pill} onPress={() => setVoice((v) => !v)}>
-          <Text style={s.pillText}>{voice ? '🔊' : '🔇'}</Text>
-        </Pressable>
-        <Pressable style={s.pill} onPress={toggleMode}>
-          <Text style={s.pillText}>{mode === '2d' ? '3D' : '2D'}</Text>
-        </Pressable>
+      <View style={s.bottom}>
+        <View style={s.timeRow}>
+          <Text style={[s.big, phase === 'ready' && { color: C.accent }]}>
+            {phase === 'ready' ? `準備 ${Math.max(0, left)}` : Math.max(0, left)}
+          </Text>
+          {next && <Text style={s.next}>下一個：{next.exercise.name}</Text>}
+        </View>
+        <View style={s.controls}>
+          <Pressable style={s.pill} onPress={onQuit}>
+            <Text style={s.pillText}>結束</Text>
+          </Pressable>
+          <Pressable style={[s.pill, s.main]} onPress={() => setPaused((p) => !p)}>
+            <Text style={[s.pillText, { color: C.onDark }]}>{paused ? '繼續' : '暫停'}</Text>
+          </Pressable>
+          <Pressable style={s.pill} onPress={advance}>
+            <Text style={s.pillText}>跳過</Text>
+          </Pressable>
+          <Pressable style={s.pill} onPress={() => setVoice((v) => !v)}>
+            <Text style={s.pillText}>{voice ? '🔊' : '🔇'}</Text>
+          </Pressable>
+          <Pressable style={s.pill} onPress={toggleMode}>
+            <Text style={s.pillText}>{mode === '2d' ? '3D' : '2D'}</Text>
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -142,18 +152,20 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  top: { position: 'absolute', top: 56, left: 20, right: 20 },
-  step: { color: C.accent, fontSize: 13, fontWeight: '600' },
-  title: { color: C.text, fontSize: 28, fontWeight: '700', marginTop: 2 },
-  cue: { color: C.sub, fontSize: 16, marginTop: 8 },
-  warn: { color: C.warn, fontSize: 12, marginTop: 6 },
-  center: { position: 'absolute', right: 20, top: '38%', alignItems: 'flex-end' },
-  big: { color: C.text, fontSize: 44, fontWeight: '800' },
-  next: { color: C.mute, fontSize: 13, marginTop: 4 },
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 96, height: 4, backgroundColor: C.card },
-  fill: { height: 4, backgroundColor: C.accent },
-  controls: { position: 'absolute', bottom: 32, left: 16, right: 16, flexDirection: 'row', gap: 8, justifyContent: 'center' },
-  pill: { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 999, backgroundColor: C.card },
-  main: { backgroundColor: C.accent },
-  pillText: { color: C.sub, fontSize: 15, fontWeight: '700' },
+  top: { paddingTop: 20, paddingHorizontal: 20, paddingBottom: 8, gap: 2 },
+  bar: { height: 6, borderRadius: 3, backgroundColor: C.card, overflow: 'hidden', marginBottom: 14 },
+  fill: { height: 6, backgroundColor: C.calm },
+  step: { color: C.accent, fontSize: 13, fontWeight: '700' },
+  title: { color: C.text, fontSize: 28, fontWeight: '800' },
+  cue: { color: C.sub, fontSize: 16, marginTop: 4, minHeight: 22 },
+  warn: { color: C.warn, fontSize: 12, marginTop: 4 },
+  stage: { flex: 1 },
+  bottom: { backgroundColor: C.panel, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 14, paddingBottom: 28, paddingHorizontal: 16, gap: 12 },
+  timeRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 6 },
+  big: { color: C.text, fontSize: 44, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  next: { color: C.mute, fontSize: 14, flexShrink: 1, textAlign: 'right', marginLeft: 12 },
+  controls: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
+  pill: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999, backgroundColor: C.card },
+  main: { backgroundColor: C.accent, paddingHorizontal: 22 },
+  pillText: { color: C.text, fontSize: 15, fontWeight: '700' },
 });

@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EXERCISES, Level } from '../data/exercises';
 import { MUSCLES } from '../data/muscles';
 import { Demo, DemoView, useDemoMode } from '../components/Demo';
+import { C } from '../ui/theme';
 
 const VIEWS: { id: DemoView; label: string }[] = [
   { id: 'auto', label: '自動' },
@@ -49,6 +50,8 @@ export default function Library({ onBack }: { onBack: () => void }) {
           view={view}
           onCue={setCue}
           onRep={setReps}
+          headroom={0.3}
+          footroom={0.1}
         />
 
         <View style={styles.header} pointerEvents="none">
@@ -168,43 +171,43 @@ export default function Library({ onBack }: { onBack: () => void }) {
   );
 }
 
-const ACCENT = '#ff3b30';
+const ACCENT = C.accent;
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#14161c' },
+  root: { flex: 1, backgroundColor: C.bg },
   stage: { flex: 1 },
   header: { position: 'absolute', top: 56, left: 20, right: 90 },
   kind: { color: ACCENT, fontSize: 13, fontWeight: '600' },
-  title: { color: '#fff', fontSize: 28, fontWeight: '700', marginTop: 2 },
-  cue: { color: '#c9cfdb', fontSize: 16, marginTop: 8 },
+  title: { color: C.text, fontSize: 28, fontWeight: '800', marginTop: 2 },
+  cue: { color: C.sub, fontSize: 16, marginTop: 8 },
   reps: { position: 'absolute', top: 56, right: 20, alignItems: 'center' },
-  repsNum: { color: '#fff', fontSize: 34, fontWeight: '700' },
-  repsLabel: { color: '#8a92a3', fontSize: 12 },
+  repsNum: { color: C.text, fontSize: 34, fontWeight: '800' },
+  repsLabel: { color: C.mute, fontSize: 12 },
   viewSwitch: { position: 'absolute', bottom: 12, left: 0, right: 0, justifyContent: 'center', flexDirection: 'row', gap: 6 },
   back: { position: 'absolute', top: 12, left: 16 },
   mode: { position: 'absolute', top: 116, right: 16 },
-  pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: '#262a33' },
-  pillOn: { backgroundColor: '#fff' },
-  pillText: { color: '#c9cfdb', fontSize: 14, fontWeight: '600' },
-  pillTextOn: { color: '#14161c' },
-  panel: { backgroundColor: '#1c1f27', padding: 16, paddingBottom: 32, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  section: { color: '#8a92a3', fontSize: 12, fontWeight: '600', marginBottom: 8, marginTop: 4 },
+  pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: C.card },
+  pillOn: { backgroundColor: C.text },
+  pillText: { color: C.text, fontSize: 14, fontWeight: '600' },
+  pillTextOn: { color: C.onDark },
+  panel: { backgroundColor: C.panel, padding: 16, paddingBottom: 32, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  section: { color: C.mute, fontSize: 12, fontWeight: '600', marginBottom: 8, marginTop: 4 },
   muscles: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  muscle: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#262a33', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  muscle: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.card, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT },
-  muscleText: { color: '#fff', fontSize: 14 },
-  muscleSub: { color: '#8a92a3', fontSize: 11 },
+  muscleText: { color: C.text, fontSize: 14 },
+  muscleSub: { color: C.mute, fontSize: 11 },
   exList: { gap: 10, paddingBottom: 12 },
   groupList: { gap: 8, paddingBottom: 6 },
   info: { maxHeight: 220, marginBottom: 8 },
-  infoTarget: { color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 4 },
-  infoText: { color: '#c9cfdb', fontSize: 14, lineHeight: 20, marginBottom: 4 },
-  infoCaution: { color: '#ffb340', fontSize: 13, lineHeight: 19, marginTop: 6 },
-  exCard: { minWidth: 92, maxWidth: 132, padding: 12, borderRadius: 14, backgroundColor: '#262a33', borderWidth: 2, borderColor: 'transparent' },
+  infoTarget: { color: C.text, fontSize: 14, fontWeight: '600', marginBottom: 4 },
+  infoText: { color: C.sub, fontSize: 14, lineHeight: 20, marginBottom: 4 },
+  infoCaution: { color: C.warn, fontSize: 13, lineHeight: 19, marginTop: 6 },
+  exCard: { minWidth: 92, maxWidth: 132, padding: 12, borderRadius: 14, backgroundColor: C.card, borderWidth: 2, borderColor: 'transparent' },
   exCardOn: { borderColor: ACCENT },
-  exKind: { color: '#8a92a3', fontSize: 11 },
-  exName: { color: '#fff', fontSize: 16, fontWeight: '600', marginTop: 4 },
+  exKind: { color: C.mute, fontSize: 11 },
+  exName: { color: C.text, fontSize: 16, fontWeight: '600', marginTop: 4 },
   controls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   play: { flex: 1, backgroundColor: ACCENT, borderRadius: 999, paddingVertical: 12, alignItems: 'center' },
-  playText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  playText: { color: C.onDark, fontSize: 16, fontWeight: '700' },
 });

@@ -24,3 +24,14 @@ export function streak(list: Session[] = sessions(), now = Date.now()): number {
   }
   return n;
 }
+
+// 每星期目標日數（研究：每星期 5 日或以上效果好）
+export const WEEK_GOAL = 5;
+
+// 今個星期（一至日）每日有冇練：[一, 二, ..., 日]
+export function weekDays(list: Session[] = sessions(), now = Date.now()): boolean[] {
+  const days = new Set(list.map((x) => dayOf(x.at)));
+  const today = dayOf(now);
+  const monday = today - ((new Date(now).getDay() + 6) % 7);
+  return Array.from({ length: 7 }, (_, i) => days.has(monday + i));
+}

@@ -34,6 +34,8 @@ type Props = {
   view: DemoView;
   onCue: (cue: string) => void;
   onRep: (reps: number) => void;
+  headroom?: number; // 3D 畫面頂留白（畀疊喺上面嘅字）
+  footroom?: number; // 3D 畫面底留白
 };
 
 export function Loading() {
@@ -44,12 +46,12 @@ export function Loading() {
   );
 }
 
-export function Demo({ mode, view, ...rest }: Props) {
+export function Demo({ mode, view, headroom, footroom, ...rest }: Props) {
   if (mode === '2d') return <Figure2D {...rest} view={view === 'auto' ? viewFor(rest.exercise) : view} />;
   // 3D 自動：用背面（原本預設）
   return (
     <Suspense fallback={<Loading />}>
-      <TrainerScene {...rest} view={view === 'auto' ? 'back' : view} />
+      <TrainerScene {...rest} headroom={headroom} footroom={footroom} view={view === 'auto' ? 'back' : view} />
     </Suspense>
   );
 }

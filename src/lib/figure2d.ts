@@ -27,9 +27,9 @@ const W = { upperArm: 0.085, forearm: 0.07, hand: 0.045, thigh: 0.14, shin: 0.1,
 export const COLORS = {
   near: '#dfe3ea',
   far: '#9ba2b0',
-  outline: '#14161c',
-  muscle: '#ff3b30',
-  floor: '#2a2f3a',
+  outline: '#3a3f4b',
+  muscle: '#ff4d2e',
+  floor: '#dccbb6',
 };
 
 // ───── 計每段身體嘅世界旋轉（同 retarget.ts 一樣嘅層級） ─────

@@ -50,7 +50,7 @@ export function Done({
       <View style={s.wrap}>
         {TIMES.map((t) => (
           <Pressable key={t} onPress={() => onReminder(t)} style={[s.chip, reminder === t && s.chipOn]}>
-            <Text style={[s.chipText, reminder === t && { color: C.bg }]}>{t}</Text>
+            <Text style={[s.chipText, reminder === t && { color: C.onDark }]}>{t}</Text>
           </Pressable>
         ))}
       </View>
@@ -69,6 +69,6 @@ const s = StyleSheet.create({
   big: { color: C.text, fontSize: 22, fontWeight: '700' },
   wrap: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, backgroundColor: C.card },
-  chipOn: { backgroundColor: '#fff' },
+  chipOn: { backgroundColor: C.text },
   chipText: { color: C.sub, fontSize: 15, fontWeight: '600' },
 });
