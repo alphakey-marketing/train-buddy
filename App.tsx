@@ -5,13 +5,14 @@ import { Answers, computeTightness, Tightness } from './src/lib/bodyTest';
 import { addSession, sessions, streak } from './src/lib/history';
 import { prescribe } from './src/lib/prescribe';
 import { load, save, track } from './src/lib/storage';
+import { Backup } from './src/screens/Backup';
 import { Done, RateAfter } from './src/screens/Finish';
 import Library from './src/screens/Library';
 import { Ask, BodyMap, Preview, Test, Welcome } from './src/screens/Onboarding';
 import { Player } from './src/screens/Player';
 
 type Profile = { pain: Area; answers: Answers; tightness: Tightness; at: number };
-type Screen = 'welcome' | 'ask' | 'test' | 'map' | 'preview' | 'play' | 'rate' | 'done' | 'library';
+type Screen = 'welcome' | 'ask' | 'test' | 'map' | 'preview' | 'play' | 'rate' | 'done' | 'library' | 'backup';
 
 export default function App() {
   const [profile, setProfile] = useState<Profile | null>(() => load<Profile | null>('profile', null));
@@ -67,6 +68,7 @@ export default function App() {
             onNext={() => setScreen('preview')}
             onRetest={() => setScreen('ask')}
             onLibrary={() => setScreen('library')}
+            onBackup={() => setScreen('backup')}
           />
         ) : null;
       case 'preview':
@@ -120,6 +122,8 @@ export default function App() {
         );
       case 'library':
         return <Library onBack={() => setScreen(profile ? 'map' : 'welcome')} />;
+      case 'backup':
+        return <Backup onBack={() => setScreen('map')} />;
     }
   })();
 

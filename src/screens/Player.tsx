@@ -1,21 +1,15 @@
 // 「跟住做」：全屏公仔 + 倒數 + 語音提示 + 自動轉下一個
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import * as Speech from 'expo-speech';
-import { TrainerScene } from '../components/TrainerScene';
+import { Demo, DemoMode } from '../components/Demo';
+import { buzz, hush, pickVoice, say as speak, useScreenAwake, VoicePick } from '../lib/device';
 import { RoutineItem } from '../lib/prescribe';
 import { C } from '../ui/theme';
 
 const READY = 4; // 每個動作前嘅準備秒數
 
 function say(text: string, on: boolean) {
-  if (!on) return;
-  try {
-    Speech.stop();
-    Speech.speak(text, { language: 'zh-HK', rate: 0.95 });
-  } catch {
-    // 唔支援語音就靜音繼續
-  }
+  if (on) speak(text);
 }
 
 export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; onDone: () => void; onQuit: () => void }) {
@@ -24,9 +18,16 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
   const [left, setLeft] = useState(READY);
   const [paused, setPaused] = useState(false);
   const [voice, setVoice] = useState(true);
+  const [mode, setMode] = useState<DemoMode>('2d');
   const [cue, setCue] = useState('');
+  const [voiceInfo, setVoiceInfo] = useState<VoicePick | null | 'wait'>('wait');
   const voiceRef = useRef(voice);
   voiceRef.current = voice;
+  useScreenAwake();
+
+  useEffect(() => {
+    pickVoice().then(setVoiceInfo);
+  }, []);
 
   const item = routine[idx];
   const next = routine[idx + 1];
@@ -36,18 +37,21 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
     setPhase('ready');
     setLeft(READY);
     setCue('');
+    if (idx > 0) buzz('change');
     say(`${idx === 0 ? '開始。' : ''}${item.exercise.name}`, voiceRef.current);
   }, [idx]);
 
+  // 中途離開先收聲；做完就等佢講完「好嘢」
+  const finished = useRef(false);
   useEffect(() => () => {
-    try {
-      Speech.stop();
-    } catch {}
+    if (!finished.current) hush();
   }, []);
 
   const advance = useCallback(() => {
     if (idx + 1 >= routine.length) {
       say('做完喇，好嘢。', voiceRef.current);
+      buzz('done');
+      finished.current = true;
       onDone();
     } else setIdx(idx + 1);
   }, [idx, routine.length, onDone]);
@@ -60,8 +64,11 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
   }, [paused]);
 
   useEffect(() => {
+    // 最後 3 秒每秒震一下
+    if (left > 0 && left <= 3 && !paused) buzz('tick');
     if (left > 0) return;
     if (phase === 'ready') {
+      buzz('change');
       setPhase('go');
       setLeft(item.seconds);
     } else advance();
@@ -80,11 +87,12 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
 
   return (
     <View style={s.root}>
-      <TrainerScene
+      <Demo
+        mode={mode}
         exercise={item.exercise}
         playing={phase === 'go' && !paused}
         speed={1}
-        view="front"
+        view={mode === '2d' ? 'auto' : 'front'}
         onCue={onCue}
         onRep={() => {}}
       />
@@ -95,6 +103,11 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
         </Text>
         <Text style={s.title}>{item.exercise.name}</Text>
         <Text style={s.cue}>{phase === 'ready' ? item.exercise.steps[0] : cue}</Text>
+        {voice && voiceInfo !== 'wait' && !voiceInfo?.cantonese && (
+          <Text style={s.warn}>
+            {voiceInfo ? `部機冇廣東話語音，用緊：${voiceInfo.name}` : '部機冇中文語音，只會顯示文字'}
+          </Text>
+        )}
       </View>
 
       <View style={s.center} pointerEvents="none">
@@ -119,6 +132,9 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
         <Pressable style={s.pill} onPress={() => setVoice((v) => !v)}>
           <Text style={s.pillText}>{voice ? '🔊' : '🔇'}</Text>
         </Pressable>
+        <Pressable style={s.pill} onPress={() => setMode((m) => (m === '2d' ? '3d' : '2d'))}>
+          <Text style={s.pillText}>{mode === '2d' ? '3D' : '2D'}</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -130,6 +146,7 @@ const s = StyleSheet.create({
   step: { color: C.accent, fontSize: 13, fontWeight: '600' },
   title: { color: C.text, fontSize: 28, fontWeight: '700', marginTop: 2 },
   cue: { color: C.sub, fontSize: 16, marginTop: 8 },
+  warn: { color: C.warn, fontSize: 12, marginTop: 6 },
   center: { position: 'absolute', right: 20, top: '38%', alignItems: 'flex-end' },
   big: { color: C.text, fontSize: 44, fontWeight: '800' },
   next: { color: C.mute, fontSize: 13, marginTop: 4 },

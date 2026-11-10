@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EXERCISES, Level } from '../data/exercises';
 import { MUSCLES } from '../data/muscles';
-import { TrainerScene, ViewAngle } from '../components/TrainerScene';
+import { Demo, DemoMode, DemoView } from '../components/Demo';
 
-const VIEWS: { id: ViewAngle; label: string }[] = [
+const VIEWS: { id: DemoView; label: string }[] = [
+  { id: 'auto', label: '自動' },
   { id: 'back', label: '背面' },
   { id: 'side', label: '側面' },
   { id: 'front', label: '正面' },
@@ -21,7 +22,8 @@ export default function Library({ onBack }: { onBack: () => void }) {
   const [exerciseId, setExerciseId] = useState(EXERCISES[0].id);
   const [showInfo, setShowInfo] = useState(false);
   const [playing, setPlaying] = useState(true);
-  const [view, setView] = useState<ViewAngle>('back');
+  const [mode, setMode] = useState<DemoMode>('2d');
+  const [view, setView] = useState<DemoView>('auto');
   const [speed, setSpeed] = useState(1);
   const [cue, setCue] = useState('');
   const [reps, setReps] = useState(0);
@@ -39,7 +41,8 @@ export default function Library({ onBack }: { onBack: () => void }) {
   return (
     <View style={styles.root}>
       <View style={styles.stage}>
-        <TrainerScene
+        <Demo
+          mode={mode}
           exercise={exercise}
           playing={playing}
           speed={speed}
@@ -59,6 +62,10 @@ export default function Library({ onBack }: { onBack: () => void }) {
           <Text style={styles.repsNum}>{reps}</Text>
           <Text style={styles.repsLabel}>次</Text>
         </View>
+
+        <Pressable onPress={() => setMode((m) => (m === '2d' ? '3d' : '2d'))} style={[styles.pill, styles.mode]}>
+          <Text style={styles.pillText}>{mode === '2d' ? '2D · 轉 3D' : '3D · 轉 2D'}</Text>
+        </Pressable>
 
         <Pressable onPress={onBack} style={[styles.pill, styles.back]}>
           <Text style={styles.pillText}>‹ 返回</Text>
@@ -173,8 +180,9 @@ const styles = StyleSheet.create({
   reps: { position: 'absolute', top: 56, right: 20, alignItems: 'center' },
   repsNum: { color: '#fff', fontSize: 34, fontWeight: '700' },
   repsLabel: { color: '#8a92a3', fontSize: 12 },
-  viewSwitch: { position: 'absolute', bottom: 12, alignSelf: 'center', flexDirection: 'row', gap: 8 },
-  back: { position: 'absolute', bottom: 12, left: 16 },
+  viewSwitch: { position: 'absolute', bottom: 12, left: 0, right: 0, justifyContent: 'center', flexDirection: 'row', gap: 6 },
+  back: { position: 'absolute', top: 12, left: 16 },
+  mode: { position: 'absolute', top: 116, right: 16 },
   pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: '#262a33' },
   pillOn: { backgroundColor: '#fff' },
   pillText: { color: '#c9cfdb', fontSize: 14, fontWeight: '600' },

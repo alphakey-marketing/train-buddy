@@ -46,3 +46,31 @@ export function track(name: EventName) {
   rows.push({ name, at: Date.now() });
   save('events', rows.slice(-500));
 }
+
+// ───── 備份：匯出／匯入全部紀錄 ─────
+// 網頁版清咗瀏覽器資料就會冇晒，所以俾用家自己存一份
+const BACKUP_KEYS = ['profile', 'reminder', 'sessions', 'events'] as const;
+export type Backup = { app: 'train-buddy'; v: 1; at: number; data: Record<string, unknown> };
+
+export function exportData(): Backup {
+  const data: Record<string, unknown> = {};
+  for (const k of BACKUP_KEYS) {
+    const v = load<unknown>(k, null);
+    if (v != null) data[k] = v;
+  }
+  return { app: 'train-buddy', v: 1, at: Date.now(), data };
+}
+
+// 成功返回幾多項；檔案唔啱就 throw
+export function importData(raw: string): number {
+  const b = JSON.parse(raw) as Partial<Backup>;
+  if (b?.app !== 'train-buddy' || typeof b.data !== 'object' || !b.data) throw new Error('唔係身體動嘅備份檔');
+  let n = 0;
+  for (const k of BACKUP_KEYS) {
+    if (k in b.data) {
+      save(k, b.data[k]);
+      n++;
+    }
+  }
+  return n;
+}
