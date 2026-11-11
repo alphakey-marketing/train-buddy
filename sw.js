@@ -2,8 +2,8 @@
 // 頁面：先上網拎新版，冇網先用 cache。其他檔案（JS、圖、模型）：有 cache 用 cache，冇先上網拎再存低。
 // CACHE 名喺 build 時加時間，每次發佈都係新 cache，舊嘢會清走。
 // PRECACHE 喺 build 時加主程式檔名：一裝好就存低，第二次開即刻有、冇網都用到。
-const CACHE = 'train-buddy-1794403544450';
-const PRECACHE = ['./', 'manifest.webmanifest', 'icon-192.png'].concat(["_expo/static/js/web/index-87d41e7154b2a18931a138457b6c00d4.js","_expo/static/js/web/TrainerScene-531bb3661ccba8a641718cd00e4d8874.js","assets/assets/models/coach-f.f9956c411cc3ac83936d66c921ebe096.glb"]);
+const CACHE = 'train-buddy-1794403926348';
+const PRECACHE = ['./', 'manifest.webmanifest', 'icon-192.png'].concat(["_expo/static/js/web/index-372296e0d5b51c4a43f7fe6203e167fa.js","_expo/static/js/web/TrainerScene-299a44c5f201c10fe40b10e673850a92.js","assets/assets/models/coach-f.f9956c411cc3ac83936d66c921ebe096.glb"]);
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));
