@@ -1,5 +1,6 @@
 import { MuscleId } from './muscles';
 import { Pose } from '../lib/pose';
+import type { Reach } from '../lib/retarget';
 
 export type Keyframe = {
   at: number; // 一個循環入面第幾秒
@@ -15,11 +16,33 @@ export type Level = 1 | 2 | 3; // 1 入門、2 初級、3 進階
 // 針對嘅身體位置（對應問卷嗰五個）
 export type Area = 'neck' | 'upper-back' | 'lower-back' | 'hips-legs' | 'wrist';
 
+// 場景道具：椅、牆（z = 牆面位置）、門框、扶手柱
+export type Prop =
+  | { kind: 'chair' }
+  | { kind: 'wall'; z: number }
+  | { kind: 'door'; x: number; z: number }
+  | { kind: 'post'; x: number; z: number; h: number };
+
+// 靜態拉筋：入位 → 停住 → 放返 →（換邊）
+export type Hold = {
+  base: Partial<Pose>; // 起始姿勢（例如坐喺椅）
+  pose: Partial<Pose>; // 拉住嗰下嘅姿勢（寫一邊，另一邊自動鏡像）
+  reach?: Reach; // 手腳要掂到邊
+  seconds: number; // 每邊停幾耐
+  sides: 1 | 2;
+  enter: string; // 入位時嘅提示
+  cues: string[]; // 停住時輪住講
+};
+
 // 純動作資料：姿勢 + 肌肉
 export type Motion = {
   id: string;
   muscles: { id: MuscleId; weight: number }[]; // weight 1 = 主力，0.5 = 輔助
   keyframes: Keyframe[]; // 最後一格要返到起點，先會循環
+  hold?: Hold; // 有就係靜態拉筋，播放器用呢個，唔用 keyframes
+  reach?: Reach; // 循環動作全程手腳要掂到邊
+  prop?: Prop;
+  view?: 'front' | 'side' | 'back'; // 3D 最好睇嘅角度
 };
 
 // 動作說明同標籤（自己寫，唔係抄書）

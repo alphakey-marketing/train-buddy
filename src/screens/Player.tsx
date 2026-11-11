@@ -1,7 +1,7 @@
 // 「跟住做」：全屏公仔 + 倒數 + 語音提示 + 自動轉下一個
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Demo, useDemoMode } from '../components/Demo';
+import { Demo } from '../components/Demo';
 import { buzz, hush, pickVoice, say as speak, useScreenAwake, VoicePick } from '../lib/device';
 import { RoutineItem } from '../lib/prescribe';
 import { C } from '../ui/theme';
@@ -18,7 +18,6 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
   const [left, setLeft] = useState(READY);
   const [paused, setPaused] = useState(false);
   const [voice, setVoice] = useState(true);
-  const [mode, toggleMode] = useDemoMode();
   const [cue, setCue] = useState('');
   const [voiceInfo, setVoiceInfo] = useState<VoicePick | null | 'wait'>('wait');
   const voiceRef = useRef(voice);
@@ -110,11 +109,12 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
 
       <View style={s.stage}>
         <Demo
-          mode={mode}
           exercise={item.exercise}
           playing={phase === 'go' && !paused}
           speed={1}
-          view={mode === '2d' ? 'auto' : 'front'}
+          hold={item.exercise.hold?.seconds}
+          seek={phase === 'go' ? item.seconds - left : 0}
+          view={item.exercise.view ?? 'front'}
           onCue={onCue}
           onRep={() => {}}
           headroom={0.02}
@@ -140,9 +140,6 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
           </Pressable>
           <Pressable style={s.pill} onPress={() => setVoice((v) => !v)}>
             <Text style={s.pillText}>{voice ? '🔊' : '🔇'}</Text>
-          </Pressable>
-          <Pressable style={s.pill} onPress={toggleMode}>
-            <Text style={s.pillText}>{mode === '2d' ? '3D' : '2D'}</Text>
           </Pressable>
         </View>
       </View>

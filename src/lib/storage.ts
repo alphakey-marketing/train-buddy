@@ -49,7 +49,7 @@ export function track(name: EventName) {
 
 // ───── 備份：匯出／匯入全部紀錄 ─────
 // 網頁版清咗瀏覽器資料就會冇晒，所以俾用家自己存一份
-const BACKUP_KEYS = ['profile', 'reminder', 'sessions', 'events'] as const;
+const BACKUP_KEYS = ['profile', 'reminder', 'sessions', 'events', 'plan', 'testlog', 'programs'] as const;
 export type Backup = { app: 'train-buddy'; v: 1; at: number; data: Record<string, unknown> };
 
 export function exportData(): Backup {

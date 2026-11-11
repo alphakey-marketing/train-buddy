@@ -8,7 +8,7 @@ import { File } from 'expo-file-system';
 import MODEL from '../../assets/models/coach-f.glb';
 import { MuscleId } from '../data/muscles';
 import { NEUTRAL, Pose } from '../lib/pose';
-import { Rig, Segment } from '../lib/retarget';
+import { Reach, Rig, Segment } from '../lib/retarget';
 import { SCENE } from '../ui/theme';
 
 export type Intensity = Partial<Record<MuscleId, number>>;
@@ -17,6 +17,8 @@ type Props = {
   poseRef: MutableRefObject<Pose>;
   intensityRef: MutableRefObject<Intensity>;
   boundsRef?: MutableRefObject<THREE.Box3>; // 每格寫低公仔而家嘅外框，鏡頭用
+  reachRef?: MutableRefObject<{ reach?: Reach; w: number }>; // 手腳要掂到邊（IK）
+  statsRef?: MutableRefObject<{ err: number; low: number }>; // 驗證用：手離目標幾遠、最低點離地
 };
 
 type V3 = [number, number, number];
@@ -43,6 +45,9 @@ const LEFT: MuscleSpot[] = [
   ['hamstrings', 'lThigh', [0, -0.22, -0.06], [0.06, 0.14, 0.042]],
   ['calves', 'lShin', [0, -0.15, -0.08], [0.045, 0.1, 0.055]],
   ['feet', 'lFoot', [0, -0.095, 0.07], [0.04, 0.02, 0.07]],
+  ['neck', 'neck', [0.03, 0.04, -0.03], [0.03, 0.055, 0.03]],
+  ['forearms', 'lFore', [0, -0.11, 0], [0.035, 0.1, 0.035]],
+  ['adductors', 'lThigh', [-0.05, -0.15, 0], [0.035, 0.12, 0.04]],
 ];
 const mirror = (s: Segment) => (s[0] === 'l' ? (('r' + s.slice(1)) as Segment) : s);
 const SPOTS: MuscleSpot[] = [
@@ -52,7 +57,7 @@ const SPOTS: MuscleSpot[] = [
 ];
 
 // 手臂嘅點唔好畀身軀嘅肌肉染，相反亦然（手垂低時好近個身）
-const limbOf = (s: Segment) => (s === 'lArm' || s === 'lFore' ? 'L' : s === 'rArm' || s === 'rFore' ? 'R' : 'T');
+const limbOf = (s: Segment) => (/^l(Arm|Fore|Hand)$/.test(s) ? 'L' : /^r(Arm|Fore|Hand)$/.test(s) ? 'R' : 'T');
 
 type Paint = {
   glow: THREE.BufferAttribute; // 每點發光幾多（0–1），shader 讀
@@ -159,7 +164,7 @@ function loadFigure() {
       if (mesh.isSkinnedMesh) paints.push(paint(mesh, rig));
     });
     // 外框用：頭頂、手、腳尖、膊頭
-    const ends = ['HeadTop_End', 'LeftHandMiddle4', 'RightHandMiddle4', 'LeftToe_End', 'RightToe_End', 'LeftFoot', 'RightFoot', 'LeftArm', 'RightArm', 'Hips']
+    const ends = ['HeadTop_End', 'LeftHandMiddle4', 'RightHandMiddle4', 'LeftToe_End', 'RightToe_End', 'LeftFoot', 'RightFoot', 'LeftArm', 'RightArm', 'Hips', 'LeftLeg', 'RightLeg']
       .map((name) => gltf.scene.getObjectByName(`mixamorig${name}`))
       .filter((o): o is THREE.Object3D => !!o);
     return { gltf, rig, paints, ends };
@@ -201,15 +206,16 @@ function blobTexture() {
   return t;
 }
 
-export function HumanFigure({ poseRef, intensityRef, boundsRef }: Props) {
+export function HumanFigure({ poseRef, intensityRef, boundsRef, reachRef, statsRef }: Props) {
   const { gltf, rig, paints, ends } = use(loadFigure());
   const shadow = useRef<THREE.Mesh>(null);
   const lastKey = useRef('');
-  const tex = useMemo(blobTexture, []);
+  const tex = useMemo(() => blobTexture(), []);
   const tmp = useMemo(() => ({ a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3() }), []);
 
   useFrame(() => {
-    rig.apply(poseRef.current);
+    rig.apply(poseRef.current, reachRef?.current.reach, reachRef?.current.w ?? 0);
+    if (statsRef) statsRef.current = { err: rig.reachError(reachRef?.current.reach), low: rig.lowest() };
 
     // 發光有變先重新染色
     const inten = intensityRef.current;

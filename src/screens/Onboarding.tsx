@@ -5,8 +5,8 @@ import { Loading, TrainerScene } from '../components/Demo';
 import { EXERCISES } from '../data/exercises';
 import { Area } from '../data/types';
 import { Answers, AREAS, mapSummary, TESTS, Tightness, tightList } from '../lib/bodyTest';
-import { streak, weekDays, WEEK_GOAL } from '../lib/history';
-import { RoutineItem, routineSeconds } from '../lib/prescribe';
+import { sessions, streak, weekDays, WEEK_GOAL } from '../lib/history';
+import { Plan, RoutineItem, routineSeconds, Setting, weekMinutes, WEEK_TARGET_MIN } from '../lib/prescribe';
 import { Button, C, DISCLAIMER } from '../ui/theme';
 
 const IDLE = EXERCISES[0];
@@ -45,7 +45,7 @@ export function Ask({
   onNext: (pain: Area, before: number) => void;
 }) {
   const [pain, setPain] = useState<Area | null>(null);
-  const [before, setBefore] = useState(5);
+  const before = 5;
   return (
     <Backdrop>
       <Text style={s.h2}>邊度最唔舒服？</Text>
@@ -58,8 +58,6 @@ export function Ask({
           </Pressable>
         ))}
       </View>
-      <Text style={s.label}>而家嗰度有幾緊或者痛？（0 = 冇事，10 = 好痛）</Text>
-      <Scale value={before} onChange={setBefore} />
       <Button label="下一步" onPress={() => pain && onNext(pain, before)} style={pain ? undefined : { opacity: 0.4 }} />
     </Backdrop>
   );
@@ -108,7 +106,9 @@ export function BodyMap({
   onRetest,
   onLibrary,
   onBackup,
+  hint,
 }: {
+  hint?: string;
   tightness: Tightness;
   onNext: () => void;
   onRetest: () => void;
@@ -121,6 +121,7 @@ export function BodyMap({
       <Progress />
       <Text style={s.h2}>你嘅身體地圖</Text>
       <Text style={s.p}>{mapSummary(tightness)}</Text>
+      {hint ? <Text style={s.fine}>{hint}</Text> : null}
       <View style={s.wrap}>
         {list.map((x) => (
           <View key={x.id} style={s.tag}>
@@ -129,7 +130,7 @@ export function BodyMap({
           </View>
         ))}
       </View>
-      <Button label="睇今日 5 分鐘練習" onPress={onNext} />
+      <Button label="去今日練習" onPress={onNext} />
       <View style={s.row}>
         <Button label="重新測試" kind="ghost" onPress={onRetest} style={s.half} />
         <Button label="動作庫" kind="ghost" onPress={onLibrary} style={s.half} />
@@ -167,12 +168,67 @@ function Progress() {
   );
 }
 
+const SETTINGS: { id: Setting; label: string }[] = [
+  { id: 'office', label: '🏢 寫字樓（坐椅／企）' },
+  { id: 'home', label: '🏠 屋企（可以瞓地）' },
+];
+const MINUTES = [2, 5, 10];
+
+// 揀部位、地點、時間，同打而家嘅緊度（每次練前都問）
+export function PlanScreen({ initial, onNext, onBack }: { initial: Plan; onNext: (p: Plan) => void; onBack: () => void }) {
+  const [areas, setAreas] = useState<Area[]>(initial.areas);
+  const [setting, setSetting] = useState<Setting>(initial.setting);
+  const [minutes, setMinutes] = useState(initial.minutes);
+  const week = weekMinutes(sessions());
+  const toggle = (a: Area) => setAreas((v) => (v.includes(a) ? v.filter((x) => x !== a) : [...v, a]));
+  return (
+    <Backdrop tall>
+      <ScrollView contentContainerStyle={{ gap: 12 }}>
+        <Text style={s.h2}>今日想鬆邊度？</Text>
+        <View style={s.wrap}>
+          <Pressable onPress={() => setAreas([])} style={[s.chip, areas.length === 0 && s.chipOn]}>
+            <Text style={[s.chipText, areas.length === 0 && s.chipTextOn]}>✨ 跟我嘅測試</Text>
+          </Pressable>
+          {AREAS.map((a) => (
+            <Pressable key={a.id} onPress={() => toggle(a.id)} style={[s.chip, areas.includes(a.id) && s.chipOn]}>
+              <Text style={[s.chipText, areas.includes(a.id) && s.chipTextOn]}>
+                {a.emoji} {a.label} · {Math.round(week[a.id])}/{WEEK_TARGET_MIN}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={s.fine}>數字 = 今個星期已拉咗幾多分鐘 / 目標 {WEEK_TARGET_MIN} 分鐘</Text>
+        <View style={s.wrap}>
+          {SETTINGS.map((x) => (
+            <Pressable key={x.id} onPress={() => setSetting(x.id)} style={[s.chip, setting === x.id && s.chipOn]}>
+              <Text style={[s.chipText, setting === x.id && s.chipTextOn]}>{x.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={s.wrap}>
+          {MINUTES.map((m) => (
+            <Pressable key={m} onPress={() => setMinutes(m)} style={[s.chip, minutes === m && s.chipOn]}>
+              <Text style={[s.chipText, minutes === m && s.chipTextOn]}>{m} 分鐘</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Button label="睇今日練習" onPress={() => onNext({ areas, setting, minutes })} />
+        <Button label="返回" kind="ghost" onPress={onBack} />
+      </ScrollView>
+    </Backdrop>
+  );
+}
+
 export function Preview({
   routine,
+  before,
+  onBefore,
   onStart,
   onBack,
 }: {
   routine: RoutineItem[];
+  before: number;
+  onBefore: (n: number) => void;
   onStart: () => void;
   onBack: () => void;
 }) {
@@ -180,19 +236,21 @@ export function Preview({
   return (
     <Backdrop tall>
       <Text style={s.h2}>今日練習 · 約 {min} 分鐘</Text>
-      <ScrollView style={{ maxHeight: 220 }}>
+      <ScrollView style={{ maxHeight: 150 }}>
         {routine.map((r, i) => (
           <View key={r.exercise.id} style={s.item}>
             <Text style={s.itemNum}>{i + 1}</Text>
             <View style={{ flex: 1 }}>
               <Text style={s.itemName}>{r.exercise.name}</Text>
               <Text style={s.itemSub}>
-                {r.exercise.kind} · {r.seconds} 秒
+                {r.exercise.kind} · {r.exercise.hold ? `每邊停 ${r.exercise.hold.seconds} 秒${r.exercise.hold.sides === 2 ? '，左右各做' : ''}` : `${r.seconds} 秒`}
               </Text>
             </View>
           </View>
         ))}
       </ScrollView>
+      <Text style={s.label}>而家邊度有幾緊或者痛？（0 = 冇事，10 = 好痛）</Text>
+      <Scale value={before} onChange={onBefore} />
       <Text style={s.fine}>會有聲音提示，記得開聲。{DISCLAIMER}</Text>
       <Button label="開始" onPress={onStart} />
       <Button label="返回" kind="ghost" onPress={onBack} />

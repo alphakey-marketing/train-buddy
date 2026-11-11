@@ -34,6 +34,14 @@ export type Pose = {
   shift: number;
   lift: number;
   seat: number;
+  // 手腕：左手 Z 正數 = 手背方向反（伸腕），右手相反
+  lWrist: Vec3;
+  rWrist: Vec3;
+  // 聳膊（正數 = 膊頭升高）
+  lShrug: number;
+  rShrug: number;
+  // 1 = 用最低接觸點落地（跪、瞓、四足、坐椅都得）；0 = 舊計法（淨係腳）
+  ground: number;
 };
 
 export const NEUTRAL: Pose = {
@@ -56,6 +64,11 @@ export const NEUTRAL: Pose = {
   shift: 0,
   lift: 0,
   seat: 0,
+  lWrist: [0, 0, 0],
+  rWrist: [0, 0, 0],
+  lShrug: 0,
+  rShrug: 0,
+  ground: 0,
 };
 
 const ease = (t: number) => t * t * (3 - 2 * t);
@@ -68,26 +81,30 @@ const lerp3 = (a: Vec3, b: Vec3, t: number): Vec3 => [
 
 export function blendPose(a: Pose, b: Pose, t: number): Pose {
   const k = ease(Math.min(1, Math.max(0, t)));
+  const out = {} as Record<string, unknown>;
+  for (const key of Object.keys(NEUTRAL) as (keyof Pose)[]) {
+    const x = a[key];
+    const y = b[key];
+    out[key] = typeof x === 'number' ? lerp(x, y as number, k) : lerp3(x, y as Vec3, k);
+  }
+  return out as Pose;
+}
+
+// 左右對調（單邊動作換邊用）
+export function mirrorPose(p: Pose): Pose {
+  const m = (v: Vec3): Vec3 => [v[0], -v[1], -v[2]];
   return {
-    spine: lerp3(a.spine, b.spine, k),
-    neck: lerp3(a.neck, b.neck, k),
-    lShoulder: lerp3(a.lShoulder, b.lShoulder, k),
-    rShoulder: lerp3(a.rShoulder, b.rShoulder, k),
-    lElbow: lerp3(a.lElbow, b.lElbow, k),
-    rElbow: lerp3(a.rElbow, b.rElbow, k),
-    lHip: lerp3(a.lHip, b.lHip, k),
-    rHip: lerp3(a.rHip, b.rHip, k),
-    lKnee: lerp(a.lKnee, b.lKnee, k),
-    rKnee: lerp(a.rKnee, b.rKnee, k),
-    lAnkle: lerp(a.lAnkle, b.lAnkle, k),
-    rAnkle: lerp(a.rAnkle, b.rAnkle, k),
-    lToe: lerp(a.lToe, b.lToe, k),
-    rToe: lerp(a.rToe, b.rToe, k),
-    tilt: lerp(a.tilt, b.tilt, k),
-    twist: lerp(a.twist, b.twist, k),
-    shift: lerp(a.shift, b.shift, k),
-    lift: lerp(a.lift, b.lift, k),
-    seat: lerp(a.seat, b.seat, k),
+    ...p,
+    spine: m(p.spine), neck: m(p.neck),
+    lShoulder: m(p.rShoulder), rShoulder: m(p.lShoulder),
+    lElbow: m(p.rElbow), rElbow: m(p.lElbow),
+    lWrist: m(p.rWrist), rWrist: m(p.lWrist),
+    lHip: m(p.rHip), rHip: m(p.lHip),
+    lKnee: p.rKnee, rKnee: p.lKnee,
+    lAnkle: p.rAnkle, rAnkle: p.lAnkle,
+    lToe: p.rToe, rToe: p.lToe,
+    lShrug: p.rShrug, rShrug: p.lShrug,
+    twist: -p.twist, shift: -p.shift,
   };
 }
 

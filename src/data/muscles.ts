@@ -14,7 +14,10 @@ export type MuscleId =
   | 'calves'
   | 'feet'
   | 'psoas'
-  | 'rotatorCuff';
+  | 'rotatorCuff'
+  | 'neck'
+  | 'forearms'
+  | 'adductors';
 
 export type MuscleInfo = {
   id: MuscleId;
@@ -39,4 +42,7 @@ export const MUSCLES: Record<MuscleId, MuscleInfo> = {
   feet: { id: 'feet', name: '足底肌', en: 'Foot intrinsics' },
   psoas: { id: 'psoas', name: '髂腰肌', en: 'Iliopsoas' },
   rotatorCuff: { id: 'rotatorCuff', name: '旋轉肌袖', en: 'Rotator cuff' },
+  neck: { id: 'neck', name: '頸後同提肩胛肌', en: 'Neck extensors / levator scapulae' },
+  forearms: { id: 'forearms', name: '前臂肌', en: 'Forearm flexors / extensors' },
+  adductors: { id: 'adductors', name: '大腿內側', en: 'Adductors' },
 };

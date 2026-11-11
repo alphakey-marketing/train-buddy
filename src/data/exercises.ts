@@ -3,6 +3,7 @@ import { Exercise, Motion, P } from './types';
 import { COPY } from './copy';
 import { ENTRY } from './library/entry';
 import { ADVANCED } from './library/advanced';
+import { STRETCH } from './library/stretch';
 
 export type { Exercise, Keyframe, ExerciseKind, Area, Level } from './types';
 
@@ -157,7 +158,7 @@ export const EXERCISES: Exercise[] = [...BASIC, ...ENTRY, ...ADVANCED].map((m) =
   const c = COPY[m.id];
   if (!c) throw new Error(`冇動作說明：${m.id}`);
   return { ...m, ...c };
-});
+}).concat(STRETCH);
 
 export function fullPose(p: Partial<Pose>): Pose {
   return { ...NEUTRAL, ...p };

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EXERCISES, Level } from '../data/exercises';
 import { MUSCLES } from '../data/muscles';
-import { Demo, DemoView, useDemoMode } from '../components/Demo';
+import { Demo, DemoView } from '../components/Demo';
 import { C } from '../ui/theme';
 
 const VIEWS: { id: DemoView; label: string }[] = [
@@ -23,7 +23,6 @@ export default function Library({ onBack }: { onBack: () => void }) {
   const [exerciseId, setExerciseId] = useState(EXERCISES[0].id);
   const [showInfo, setShowInfo] = useState(false);
   const [playing, setPlaying] = useState(true);
-  const [mode, toggleMode] = useDemoMode();
   const [view, setView] = useState<DemoView>('auto');
   const [speed, setSpeed] = useState(1);
   const [cue, setCue] = useState('');
@@ -43,7 +42,6 @@ export default function Library({ onBack }: { onBack: () => void }) {
     <View style={styles.root}>
       <View style={styles.stage}>
         <Demo
-          mode={mode}
           exercise={exercise}
           playing={playing}
           speed={speed}
@@ -65,10 +63,6 @@ export default function Library({ onBack }: { onBack: () => void }) {
           <Text style={styles.repsNum}>{reps}</Text>
           <Text style={styles.repsLabel}>次</Text>
         </View>
-
-        <Pressable onPress={toggleMode} style={[styles.pill, styles.mode]}>
-          <Text style={styles.pillText}>{mode === '2d' ? '2D · 轉 3D' : '3D · 轉 2D'}</Text>
-        </Pressable>
 
         <Pressable onPress={onBack} style={[styles.pill, styles.back]}>
           <Text style={styles.pillText}>‹ 返回</Text>
@@ -185,7 +179,6 @@ const styles = StyleSheet.create({
   repsLabel: { color: C.mute, fontSize: 12 },
   viewSwitch: { position: 'absolute', bottom: 12, left: 0, right: 0, justifyContent: 'center', flexDirection: 'row', gap: 6 },
   back: { position: 'absolute', top: 12, left: 16 },
-  mode: { position: 'absolute', top: 116, right: 16 },
   pill: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, backgroundColor: C.card },
   pillOn: { backgroundColor: C.text },
   pillText: { color: C.text, fontSize: 14, fontWeight: '600' },
