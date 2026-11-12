@@ -29,6 +29,11 @@ export function cycleLength(ex: Exercise, hold?: number): number {
 }
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
+
+// 換邊：字入面「左」「右」對調（公仔已經鏡像，字都要跟）。「左右」呢個詞唔郁
+export function swapSides(text: string): string {
+  return text.replace(/左右|左|右/g, (m) => (m === '左右' ? m : m === '左' ? '右' : '左'));
+}
 const glowOf = (ex: Exercise, effort: number) => {
   const intensity: Sample['intensity'] = {};
   for (const m of ex.muscles) intensity[m.id] = m.weight * (0.25 + 0.75 * effort);
@@ -55,7 +60,7 @@ function sampleHold(ex: Exercise, time: number, holdSec?: number): Sample {
     pose = blendPose(base, target, k);
     w = smooth(k);
     phase = 'in';
-    cue = side ? `換另一邊。${h.enter}` : h.enter;
+    cue = side ? `換另一邊。${swapSides(h.enter)}` : h.enter;
   } else if (u < MOVE_IN + hold) {
     const v = u - MOVE_IN;
     // 停住時輕輕呼吸，唔好似石像
@@ -64,7 +69,8 @@ function sampleHold(ex: Exercise, time: number, holdSec?: number): Sample {
     w = 1;
     phase = 'hold';
     left = hold - v;
-    cue = h.cues[Math.min(h.cues.length - 1, Math.floor((v / hold) * h.cues.length))] ?? '';
+    const c = h.cues[Math.min(h.cues.length - 1, Math.floor((v / hold) * h.cues.length))] ?? '';
+    cue = side ? swapSides(c) : c;
   } else {
     const k = (u - MOVE_IN - hold) / MOVE_OUT;
     pose = blendPose(target, base, k);

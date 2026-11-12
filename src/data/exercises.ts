@@ -4,6 +4,7 @@ import { COPY } from './copy';
 import { ENTRY } from './library/entry';
 import { ADVANCED } from './library/advanced';
 import { STRETCH } from './library/stretch';
+import { ACTIVE } from './library/active';
 
 export type { Exercise, Keyframe, ExerciseKind, Area, Level } from './types';
 
@@ -158,7 +159,20 @@ export const EXERCISES: Exercise[] = [...BASIC, ...ENTRY, ...ADVANCED].map((m) =
   const c = COPY[m.id];
   if (!c) throw new Error(`冇動作說明：${m.id}`);
   return { ...m, ...c };
-}).concat(STRETCH);
+}).concat(STRETCH, ACTIVE);
+
+// 冇括號嘅名：語音、細卡用（「頸側拉筋（上斜方肌）」→「頸側拉筋」）
+export const plainName = (e: Pick<Exercise, 'name'>) => e.name.replace(/（.*?）/g, '').trim();
+
+// 做呢個動作要準備咩：椅／門框／牆／地墊
+export function needOf(e: Exercise): string | null {
+  if (e.floor) return '要瞓地，準備地墊';
+  const k = e.prop?.kind;
+  if (k === 'chair') return '坐椅';
+  if (k === 'door') return '企去門框';
+  if (k === 'wall') return '面向牆企';
+  return null;
+}
 
 export function fullPose(p: Partial<Pose>): Pose {
   return { ...NEUTRAL, ...p };

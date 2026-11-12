@@ -1,109 +1,97 @@
-// 主頁：今日推薦、我嘅課程、快練、自訂。課程詳情：7 日列表。
+// 課程詳情：7 日列表。做晒就建議下一個課程。
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { EXERCISES } from '../data/exercises';
-import { PROGRAMS, Program, Quick, QUICKS, nextDay, progress, recommend } from '../data/programs';
-import { Tightness } from '../lib/bodyTest';
+import { EXERCISES, plainName } from '../data/exercises';
+import { PROGRAMS, Program, isFinished, nextDay, progress, resetProgram } from '../data/programs';
 import { secondsOf } from '../lib/prescribe';
-import { Button, C } from '../ui/theme';
+import { Button, C, HAIR, SERIF } from '../ui/theme';
 
 export const minutesOf = (ids: string[]) =>
   Math.max(1, Math.round(ids.reduce((s, id) => s + secondsOf(EXERCISES.find((e) => e.id === id)!), 0) / 60));
 
-function Card({ title, sub, onPress, accent }: { title: string; sub: string; onPress: () => void; accent?: boolean }) {
-  return (
-    <Pressable onPress={onPress} style={[s.card, accent && s.cardAccent]}>
-      <Text style={[s.cardTitle, accent && { color: C.onDark }]}>{title}</Text>
-      <Text style={[s.cardSub, accent && { color: C.onDark }]}>{sub}</Text>
-    </Pressable>
-  );
-}
+const no = (i: number) => String(i + 1).padStart(2, '0');
+const nameOf = (id: string) => plainName(EXERCISES.find((e) => e.id === id) ?? { name: id });
 
-export function Hub({
-  tightness,
-  onProgram,
-  onQuick,
-  onCustom,
-  onMap,
-  onLibrary,
+export function ProgramDetail({
+  program,
+  onStart,
+  onBack,
+  onOpen,
 }: {
-  tightness: Tightness;
-  onProgram: (p: Program) => void;
-  onQuick: (q: Quick) => void;
-  onCustom: () => void;
-  onMap: () => void;
-  onLibrary: () => void;
+  program: Program;
+  onStart: (day: number) => void;
+  onBack: () => void;
+  onOpen: (p: Program) => void;
 }) {
-  const rec = recommend(tightness);
-  const prog = progress();
-  const mine = PROGRAMS.filter((p) => prog[p.id]);
-  const label = (p: Program) => {
-    const n = nextDay(p.id);
-    return n >= 7 ? '已完成 7/7 ✅' : `第 ${n + 1} 日 · ${p.days[n].title} · 已做 ${prog[p.id]?.done.length ?? 0}/7`;
-  };
-  return (
-    <ScrollView style={s.root} contentContainerStyle={s.pad}>
-      <Text style={s.h1}>今日練咩？</Text>
-      <Text style={s.h3}>為你推薦</Text>
-      <Card accent title={`${rec.emoji} ${rec.name}`} sub={prog[rec.id] ? label(rec) : `7 日課程 · 每日 3–5 分鐘 · ${rec.blurb}`} onPress={() => onProgram(rec)} />
-      {mine.length > 0 && (
-        <>
-          <Text style={s.h3}>我嘅課程</Text>
-          {mine.map((p) => (
-            <Card key={p.id} title={`${p.emoji} ${p.name}`} sub={label(p)} onPress={() => onProgram(p)} />
-          ))}
-        </>
-      )}
-      <Text style={s.h3}>全部課程（7 日）</Text>
-      {PROGRAMS.filter((p) => p.id !== rec.id && !prog[p.id]).map((p) => (
-        <Card key={p.id} title={`${p.emoji} ${p.name}`} sub={`${p.setting === 'office' ? '🏢 寫字樓' : '🏠 屋企'} · ${p.blurb}`} onPress={() => onProgram(p)} />
-      ))}
-      <Text style={s.h3}>快練（一次過）</Text>
-      {QUICKS.map((q) => (
-        <Card key={q.id} title={`${q.emoji} ${q.name} · ${minutesOf(q.ids)} 分鐘`} sub={q.blurb} onPress={() => onQuick(q)} />
-      ))}
-      <View style={{ height: 8 }} />
-      <Button label="自訂（揀部位、地點、時間）" kind="ghost" onPress={onCustom} />
-      <Button label="身體地圖／重新測試" kind="ghost" onPress={onMap} />
-      <Button label="動作庫" kind="ghost" onPress={onLibrary} />
-    </ScrollView>
-  );
-}
-
-export function ProgramDetail({ program, onStart, onBack }: { program: Program; onStart: (day: number) => void; onBack: () => void }) {
+  const [, bump] = useState(0);
   const done = progress()[program.id]?.done ?? [];
   const next = nextDay(program.id);
+  const finished = next >= 7;
+  // 下一個建議：同場景、未做晒嘅課程優先
+  const after = PROGRAMS.filter((p) => p.id !== program.id && !isFinished(p.id)).sort(
+    (a, b) => Number(b.setting === program.setting) - Number(a.setting === program.setting),
+  )[0];
   return (
     <ScrollView style={s.root} contentContainerStyle={s.pad}>
-      <Text style={s.h1}>
-        {program.emoji} {program.name}
-      </Text>
+      <Pressable onPress={onBack}>
+        <Text style={s.back}>‹ 主頁</Text>
+      </Pressable>
+      <Text style={s.kicker}>七日課程 · {program.setting === 'office' ? '寫字樓' : '屋企'}</Text>
+      <Text style={s.h1}>{program.name}</Text>
       <Text style={s.p}>{program.blurb}</Text>
-      <Text style={s.p}>每日約 3–5 分鐘，每個動作每邊停 20–40 秒，唔痛先繼續。一日做一課，隔日做都得。</Text>
+      <Text style={s.fine}>每日約 3–5 分鐘。拉筋每邊停 20–30 秒，活動就慢慢郁；唔痛先繼續。一日做一課，隔日做都得。</Text>
+      {finished && (
+        <View style={s.done}>
+          <Text style={s.doneTitle}>七日完成！</Text>
+          <Text style={s.doneText}>做得好。可以再做一次鞏固，或者試下一個課程。順便重新做一次身體測試，睇下有冇鬆咗。</Text>
+          {after && <Button label={`下一個：${after.name}`} onPress={() => onOpen(after)} />}
+          <Button
+            label="由第 1 日再嚟"
+            kind="ghost"
+            onPress={() => {
+              resetProgram(program.id);
+              bump((n) => n + 1);
+            }}
+          />
+        </View>
+      )}
+      <View style={s.rule} />
       {program.days.map((d, i) => {
         const ok = done.includes(i);
         return (
-          <Pressable key={i} onPress={() => onStart(i)} style={[s.card, i === next && s.cardAccent]}>
-            <Text style={[s.cardTitle, i === next && { color: C.onDark }]}>
-              {ok ? '✅' : i === next ? '▶️' : '⚪'} 第 {i + 1} 日 · {d.title} · {minutesOf(d.ids)} 分鐘
+          <Pressable key={i} onPress={() => onStart(i)} style={s.row}>
+            <Text style={[s.rowNo, ok && { color: C.calm }, i === next && { color: C.accent }]}>{no(i)}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.rowTitle, ok && { color: C.mute }]}>{d.title}</Text>
+              <Text style={s.rowSub}>{d.ids.map(nameOf).join('、')}</Text>
+            </View>
+            <Text style={[s.rowRight, ok && { color: C.calm }, i === next && { color: C.accent }]}>
+              {ok ? '完成 ✓' : i === next ? '今日' : `${minutesOf(d.ids)} 分鐘`}
             </Text>
-            <Text style={[s.cardSub, i === next && { color: C.onDark }]}>{d.ids.map((id) => EXERCISES.find((e) => e.id === id)?.name).join(' · ')}</Text>
           </Pressable>
         );
       })}
-      <Button label={next >= 7 ? '再做一次第 7 日' : `開始第 ${next + 1} 日`} onPress={() => onStart(Math.min(next, 6))} />
-      <Button label="返回" kind="ghost" onPress={onBack} />
+      <View style={{ height: 16 }} />
+      {!finished && <Button label={`開始第 ${next + 1} 日`} onPress={() => onStart(next)} />}
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  pad: { padding: 16, paddingTop: 48, gap: 10 },
-  h1: { fontSize: 26, fontWeight: '800', color: C.text },
-  h3: { fontSize: 15, fontWeight: '700', color: C.sub, marginTop: 8 },
-  p: { fontSize: 15, color: C.sub, lineHeight: 22 },
-  card: { backgroundColor: C.card, borderRadius: 16, padding: 14, gap: 4 },
-  cardAccent: { backgroundColor: C.text },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: C.text },
-  cardSub: { fontSize: 14, color: C.sub, lineHeight: 20 },
+  pad: { padding: 22, paddingTop: 44, gap: 0, paddingBottom: 48 },
+  rule: { height: HAIR, backgroundColor: C.line, marginTop: 16, marginBottom: 4 },
+  kicker: { fontSize: 12, color: C.accent, fontWeight: '700', letterSpacing: 2, marginBottom: 8 },
+  row: { flexDirection: 'row', alignItems: 'baseline', gap: 14, paddingVertical: 14, borderBottomWidth: HAIR, borderColor: C.line },
+  rowNo: { fontFamily: SERIF, fontSize: 15, color: C.mute, width: 24, fontVariant: ['tabular-nums'] },
+  rowTitle: { fontFamily: SERIF, fontSize: 19, fontWeight: '800', color: C.text },
+  rowSub: { fontSize: 13, color: C.mute, lineHeight: 19, marginTop: 3 },
+  rowRight: { fontSize: 12, color: C.mute, letterSpacing: 1 },
+  back: { fontSize: 15, color: C.sub, marginBottom: 18, paddingVertical: 6 },
+  h1: { fontFamily: SERIF, fontSize: 34, fontWeight: '900', color: C.text, lineHeight: 42 },
+  p: { fontSize: 16, color: C.sub, lineHeight: 25, marginTop: 8 },
+  fine: { fontSize: 13, color: C.mute, lineHeight: 20, marginTop: 8 },
+  done: { backgroundColor: C.panel, borderRadius: 18, padding: 16, gap: 10, marginTop: 16, borderWidth: HAIR, borderColor: C.line },
+  doneTitle: { fontFamily: SERIF, fontSize: 22, fontWeight: '900', color: C.calm },
+  doneText: { fontSize: 14, color: C.sub, lineHeight: 21 },
 });

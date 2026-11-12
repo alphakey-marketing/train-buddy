@@ -39,7 +39,7 @@ export const TESTS: TestStep[] = [
   {
     id: 'bend',
     title: '前彎測試',
-    how: '雙腳併攏，膝頭唔好屈，慢慢彎腰向地。',
+    how: '雙腳併攏，膝頭放鬆唔使鎖死，慢慢彎腰向地。腰一彎就痛，唔好做，揀最後一個。',
     options: ['手掌可以貼地', '摸到腳趾', '只到膝頭附近'],
     muscles: [{ id: 'hamstrings', weight: 1 }, { id: 'erectors', weight: 0.6 }, { id: 'calves', weight: 0.5 }],
   },
@@ -50,18 +50,25 @@ export const TESTS: TestStep[] = [
     options: ['蹲到底，腳踭貼地', '腳踭離地或者要向後倒', '蹲唔低，髖位好緊'],
     muscles: [{ id: 'psoas', weight: 0.8 }, { id: 'calves', weight: 0.7 }, { id: 'glutes', weight: 0.5 }, { id: 'feet', weight: 0.3 }],
   },
+  {
+    id: 'wrist',
+    title: '合掌測試',
+    how: '胸前合掌（似祈禱），手掌貼實，慢慢將手腕向下移，前臂盡量打平。',
+    options: ['前臂打得平，手掌仲貼住', '前臂斜少少先貼得住', '好快就要分開手掌，或者手腕痛'],
+    muscles: [{ id: 'forearms', weight: 1 }],
+  },
 ];
 
 // 邊個位痛，對應嘅肌肉會加分
 const PAIN_MUSCLES: Record<Area, { id: MuscleId; weight: number }[]> = {
-  neck: [{ id: 'traps', weight: 1 }, { id: 'shoulders', weight: 0.5 }],
+  neck: [{ id: 'traps', weight: 1 }, { id: 'neck', weight: 0.8 }, { id: 'shoulders', weight: 0.5 }],
   'upper-back': [{ id: 'traps', weight: 0.7 }, { id: 'rotatorCuff', weight: 0.7 }, { id: 'erectors', weight: 0.6 }, { id: 'chest', weight: 0.5 }],
   'lower-back': [{ id: 'erectors', weight: 1 }, { id: 'psoas', weight: 0.8 }, { id: 'glutes', weight: 0.6 }],
   'hips-legs': [{ id: 'hamstrings', weight: 0.8 }, { id: 'psoas', weight: 0.8 }, { id: 'glutes', weight: 0.8 }, { id: 'quads', weight: 0.5 }],
-  wrist: [{ id: 'biceps', weight: 0.6 }, { id: 'triceps', weight: 0.6 }, { id: 'rotatorCuff', weight: 0.4 }],
+  wrist: [{ id: 'forearms', weight: 1 }, { id: 'shoulders', weight: 0.3 }, { id: 'neck', weight: 0.3 }],
 };
 
-export type Answers = Record<string, number>; // testId -> 0..2
+export type Answers = Record<string, number>; // testId -> 0..2；跳過 = 冇呢個 key
 
 export function computeTightness(answers: Answers, pain: Area): Tightness {
   const out: Tightness = {};
@@ -69,7 +76,8 @@ export function computeTightness(answers: Answers, pain: Area): Tightness {
     out[id] = Math.min(1, (out[id] ?? 0) + v);
   };
   for (const t of TESTS) {
-    const score = (answers[t.id] ?? 0) / 2;
+    if (answers[t.id] === undefined) continue; // 跳咗就唔計
+    const score = answers[t.id] / 2;
     for (const m of t.muscles) bump(m.id, Math.min(1, score * m.weight));
   }
   for (const m of PAIN_MUSCLES[pain]) bump(m.id, 0.3 * m.weight);
@@ -82,12 +90,12 @@ export function tightList(t: Tightness, n = 3): { id: MuscleId; name: string; va
     .filter(([, v]) => v >= 0.25)
     .sort((a, b) => b[1] - a[1])
     .slice(0, n)
-    .map(([id, value]) => ({ id, name: MUSCLES[id].name, value }));
+    .map(([id, value]) => ({ id, name: MUSCLES[id].plain, value }));
 }
 
 export function mapSummary(t: Tightness): string {
   const top = tightList(t);
   if (top.length === 0) return '你各部位都幾靈活，繼續保持。每日練 5 分鐘，維持住就得。';
   const names = top.map((x) => x.name).join('、');
-  return `你嘅${names}偏緊，坐得耐嘅人好常見。今日先由呢幾組開始鬆。`;
+  return `你嘅${names}偏緊，坐得耐嘅人好常見。今日先由呢幾度開始鬆。`;
 }

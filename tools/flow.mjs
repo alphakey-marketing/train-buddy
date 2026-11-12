@@ -30,7 +30,7 @@ const look = async (name, ms = 2500) => {
 };
 
 await send('Page.enable');
-await send('Emulation.setDeviceMetricsOverride', { width: 420, height: 900, deviceScaleFactor: 1, mobile: false });
+await send('Emulation.setDeviceMetricsOverride', { width: Number(process.env.W||420), height: Number(process.env.H||900), deviceScaleFactor: 1, mobile: false });
 await send('Page.navigate', { url: 'http://localhost:8099/' });
 await sleep(6000);
 await ev(`localStorage.clear();localStorage.setItem('profile', JSON.stringify({pain:'neck',answers:{},tightness:{neck:0.9,traps:0.8,shoulders:0.6,chest:0.4},at:Date.now()}))`);
@@ -38,7 +38,7 @@ await send('Page.navigate', { url: 'http://localhost:8099/' });
 await sleep(6000);
 console.log(await click('身體地圖'));
 await look('f1-hub');
-console.log(await click('頸肩鬆一鬆'));
+console.log(await click('開始課程'));
 await look('f2-detail');
 console.log(await click('開始第 1 日'));
 await look('f3-preview', 4000);

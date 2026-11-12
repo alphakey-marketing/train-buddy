@@ -13,6 +13,7 @@ const armsUpTiptoe = P({
 });
 
 const deepSquat = P({
+  ground: 1,
   spine: [0.35, 0, 0],
   lHip: [-1.9, 0, 0.08],
   rHip: [-1.9, 0, -0.08],

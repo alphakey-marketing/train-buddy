@@ -32,7 +32,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "node tools/build-web.mjs"
+    "build:web": "node tools/build-web.mjs",
+    "lint": "expo lint"
   },
   "private": true
 }

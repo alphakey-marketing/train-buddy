@@ -13,7 +13,7 @@ export type Plan = { areas: Area[]; setting: Setting; minutes: number }; // area
 export const DEFAULT_PLAN: Plan = { areas: [], setting: 'office', minutes: 5 };
 export const WEEK_TARGET_MIN = 5;
 
-const LOOP_SECONDS = 55; // 循環動作（唔係靜態拉筋）做幾耐
+const LOOP_SECONDS = 40; // 循環動作（唔係靜態拉筋）做幾耐
 export const secondsOf = (e: Exercise) => (e.hold ? cycleLength(e) : LOOP_SECONDS);
 
 // 今個星期（一至日）每個位置拉咗幾多分鐘
@@ -42,13 +42,14 @@ function score(e: Exercise, t: Tightness, plan: Plan, week: Record<Area, number>
   v += gap * 0.8;
   if (e.hold) v += 0.4; // 靜態拉筋優先
   if (e.kind === '放鬆') v -= 0.8;
+  if (e.kind === '活化') v -= 0.3;
   if (last.has(e.id)) v -= 0.7; // 同上次唔同，唔悶
   return v;
 }
 
 export function prescribe(t: Tightness, plan: Plan, list: Session[] = sessions()): RoutineItem[] {
   const pool = EXERCISES.filter(
-    (e) => (e.kind === '伸展' || e.kind === '放鬆') && e.level <= 2 && (plan.setting === 'home' || (e.desk && !e.floor)),
+    (e) => (e.kind === '伸展' || e.kind === '放鬆' || e.kind === '活化') && e.level <= 2 && (plan.setting === 'home' || (e.desk && !e.floor)),
   );
   const week = weekMinutes(list);
   const last = new Set(list.length ? list[list.length - 1].ids : []);
@@ -57,6 +58,12 @@ export function prescribe(t: Tightness, plan: Plan, list: Session[] = sessions()
   const budget = plan.minutes * 60;
   const chosen: Exercise[] = [];
   let used = 0;
+  // 先由一個慢慢郁嘅活動開始（暖身，亦都係研究建議：拉筋要配主動活動）
+  const warm = pool.filter((e) => e.kind === '活化' && !e.hold).sort(byScore)[0];
+  if (warm && budget >= 180) {
+    chosen.push(warm);
+    used += secondsOf(warm);
+  }
   for (const e of ranked) {
     const len = secondsOf(e);
     if (used + len > budget * 1.1) continue;

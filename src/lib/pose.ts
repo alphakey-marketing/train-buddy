@@ -85,7 +85,9 @@ export function blendPose(a: Pose, b: Pose, t: number): Pose {
   for (const key of Object.keys(NEUTRAL) as (keyof Pose)[]) {
     const x = a[key];
     const y = b[key];
-    out[key] = typeof x === 'number' ? lerp(x, y as number, k) : lerp3(x, y as Vec3, k);
+    // 手肘慢啲先屈：手臂先抬起，之後先摺，唔會中途收埋喺個頭後面
+    const kk = key === 'lElbow' || key === 'rElbow' ? ease(Math.min(1, Math.max(0, (t - 0.35) / 0.65))) : k;
+    out[key] = typeof x === 'number' ? lerp(x, y as number, kk) : lerp3(x, y as Vec3, kk);
   }
   return out as Pose;
 }

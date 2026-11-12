@@ -1,21 +1,22 @@
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { EXERCISES } from './src/data/exercises';
-import { markDone, Program } from './src/data/programs';
+import { markDone, nextDay, Program } from './src/data/programs';
 import { Area } from './src/data/types';
 import { Answers, computeTightness, Tightness } from './src/lib/bodyTest';
 import { addSession, sessions, streak } from './src/lib/history';
-import { DEFAULT_PLAN, Plan, prescribe, RoutineItem, secondsOf } from './src/lib/prescribe';
+import { DEFAULT_PLAN, Plan, prescribe, RoutineItem, secondsOf, Setting } from './src/lib/prescribe';
 import { load, save, track } from './src/lib/storage';
 import { Backup } from './src/screens/Backup';
 import { Done, RateAfter } from './src/screens/Finish';
 import { Lab } from './src/screens/Lab';
 import Library from './src/screens/Library';
-import { Hub, ProgramDetail } from './src/screens/Programs';
+import { HubNike } from './src/screens/HubNike';
+import { ProgramDetail } from './src/screens/Programs';
 import { Ask, BodyMap, PlanScreen, Preview, Test, Welcome } from './src/screens/Onboarding';
 import { Player } from './src/screens/Player';
 
-type Profile = { pain: Area; answers: Answers; tightness: Tightness; at: number };
+type Profile = { pain: Area; setting?: Setting; answers: Answers; tightness: Tightness; at: number };
 type Screen = 'welcome' | 'ask' | 'test' | 'hub' | 'program' | 'map' | 'plan' | 'preview' | 'play' | 'rate' | 'done' | 'library' | 'backup';
 
 const labQuery = (() => {
@@ -34,11 +35,12 @@ export default function App() {
 
 function Main() {
   const [profile, setProfile] = useState<Profile | null>(() => load<Profile | null>('profile', null));
-  const [screen, setScreen] = useState<Screen>('welcome');
-  const [pain, setPain] = useState<Area>('neck');
+  // 返嚟嘅用家直接去主頁，唔使再撳一次
+  const [screen, setScreen] = useState<Screen>(() => (load<Profile | null>('profile', null) ? 'hub' : 'welcome'));
+  const [pain, setPain] = useState<Area>(() => profile?.pain ?? 'neck');
+  const [setting, setSetting] = useState<Setting>(() => profile?.setting ?? 'office');
   const [before, setBefore] = useState(5);
   const [after, setAfter] = useState(0);
-  const [reminder, setReminder] = useState<string | null>(() => load<string | null>('reminder', null));
 
   useEffect(() => track('open'), []);
 
@@ -58,19 +60,18 @@ function Main() {
     setBack(from);
     setScreen('preview');
   };
-  const [nowMs] = useState(Date.now);
   const log = load<{ at: number; avg: number }[]>('testlog', []);
   const hint = (() => {
     if (!log.length) return undefined;
     const last = log[log.length - 1];
-    const days = Math.floor((nowMs - last.at) / 86400000);
+    const days = Math.max(0, Math.floor((Date.now() - last.at) / 86400000));
     const prev = log.length > 1 ? log[log.length - 2] : null;
-    const diff = prev ? ` · 同上次比${last.avg < prev.avg - 0.02 ? '鬆咗 👍' : last.avg > prev.avg + 0.02 ? '緊咗啲' : '差唔多'}` : '';
+    const diff = prev ? ` · 同上次比${last.avg < prev.avg - 0.02 ? '鬆咗' : last.avg > prev.avg + 0.02 ? '緊咗啲' : '差唔多'}` : '';
     return `上次測試：${days === 0 ? '今日' : `${days} 日前`}${diff}${days >= 14 ? ' · 建議重新測試' : ''}`;
   })();
 
   const finishTest = (answers: Answers) => {
-    const p: Profile = { pain, answers, tightness: computeTightness(answers, pain), at: Date.now() };
+    const p: Profile = { pain, setting, answers, tightness: computeTightness(answers, pain), at: Date.now() };
     save('profile', p);
     const vals = Object.values(p.tightness).map((v) => v ?? 0);
     save('testlog', [...log, { at: p.at, avg: vals.reduce((a, b) => a + b, 0) / Math.max(1, vals.length) }].slice(-50));
@@ -78,6 +79,13 @@ function Main() {
     track('test_done');
     setScreen('map');
   };
+
+  // 練完頁顯示課程進度
+  const programNote = (() => {
+    if (!prog || day === null) return undefined;
+    const n = nextDay(prog.id);
+    return n >= 7 ? `${prog.name} · 七日全部完成！` : `${prog.name} · 完成第 ${day + 1} 日，聽日做第 ${n + 1} 日`;
+  })();
 
   const body = (() => {
     switch (screen) {
@@ -97,9 +105,11 @@ function Main() {
       case 'ask':
         return (
           <Ask
-            onNext={(a, b) => {
+            onNext={(a, b, st) => {
               setPain(a);
               setBefore(b);
+              setSetting(st);
+              setPlan((pl) => ({ ...pl, setting: st }));
               setScreen('test');
             }}
           />
@@ -108,8 +118,10 @@ function Main() {
         return <Test onDone={finishTest} />;
       case 'hub':
         return profile ? (
-          <Hub
+          <HubNike
             tightness={profile.tightness}
+            pain={profile.pain}
+            setting={profile.setting}
             onProgram={(p) => {
               setProg(p);
               setScreen('program');
@@ -121,7 +133,15 @@ function Main() {
           />
         ) : null;
       case 'program':
-        return prog ? <ProgramDetail program={prog} onBack={() => setScreen('hub')} onStart={(d) => begin(prog.days[d].ids, d, 'program')} /> : null;
+        return prog ? (
+          <ProgramDetail
+            key={prog.id}
+            program={prog}
+            onBack={() => setScreen('hub')}
+            onOpen={setProg}
+            onStart={(d) => begin(prog.days[d].ids, d, 'program')}
+          />
+        ) : null;
       case 'map':
         return profile ? (
           <BodyMap
@@ -169,7 +189,7 @@ function Main() {
               track('routine_done');
               setScreen('rate');
             }}
-            onQuit={() => setScreen('hub')}
+            onQuit={() => setScreen(back === 'program' ? 'program' : 'hub')}
           />
         );
       case 'rate':
@@ -191,17 +211,12 @@ function Main() {
             before={before}
             after={after}
             streakDays={streak(sessions())}
-            reminder={reminder}
-            onReminder={(t) => {
-              setReminder(t);
-              save('reminder', t);
-              track('reminder_set');
-            }}
+            programNote={programNote}
             onHome={() => setScreen('hub')}
           />
         );
       case 'library':
-        return <Library onBack={() => setScreen(profile ? 'hub' : 'welcome')} />;
+        return <Library area={profile?.pain} onBack={() => setScreen(profile ? 'hub' : 'welcome')} />;
       case 'backup':
         return <Backup onBack={() => setScreen('map')} />;
     }

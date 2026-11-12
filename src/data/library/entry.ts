@@ -6,6 +6,7 @@ import { Motion, P } from '../types';
 // 坐地，左膝曲起，雙手扶住左腳（足趾動作用）
 const sitHoldFoot = P({
   seat: 1,
+  ground: 1,
   spine: [0.8, 0, 0],
   neck: [0.2, 0, 0],
   lHip: [-2.1, 0, 0.2],
@@ -21,6 +22,7 @@ const sitHoldFoot = P({
 // 長坐，雙手喺後面撐地
 const sitLong = P({
   seat: 1,
+  ground: 1,
   spine: [-0.15, 0, 0],
   lHip: [-1.5, 0, 0.1],
   rHip: [-1.5, 0, -0.1],
@@ -43,6 +45,7 @@ const handsOnPlexus = P({
 // 曲膝坐低（單側螺旋伸展用）
 const sitKnee = P({
   seat: 1,
+  ground: 1,
   spine: [0.1, 0, 0],
   lHip: [-1.9, 0, 0.25],
   lKnee: 1.9,
@@ -64,6 +67,7 @@ const sitTwist = P({
 
 // 俯臥兩肘撐地
 const proneElbows = P({
+  ground: 1,
   tilt: 1.4,
   spine: [-0.2, 0, 0],
   neck: [0.35, 0, 0],
