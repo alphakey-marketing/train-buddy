@@ -1,4 +1,4 @@
-// 新用家流程：歡迎 → 一問 → 身體測試 → 身體地圖 → 今日練習
+// 新用家流程：歡迎 → 一問 → 身體測試 → 自評活動地圖 → 今日練習
 import { ReactNode, Suspense, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Loading, TrainerScene } from '../components/Demo';
@@ -34,38 +34,41 @@ function Backdrop({ glow, children, tall }: { glow?: Tightness; children: ReactN
   );
 }
 
-export function Welcome({ returning, onStart }: { returning: boolean; onStart: () => void }) {
+export function Welcome({ returning, onStart, onQuick }: { returning: boolean; onStart: () => void; onQuick: () => void }) {
   return (
     <Backdrop>
       <Text style={s.h1}>身體動</Text>
       <Text style={s.p}>
         {returning ? '歡迎返嚟。今日都練 5 分鐘，鬆返個身。' : '寫字樓坐耐咗，頸膊腰都緊？2 分鐘問你幾條問題，幫你度身揀一套 5 分鐘練習。'}
       </Text>
-      <Button label={returning ? '去今日練習' : '開始（約 2 分鐘）'} onPress={onStart} />
       {!returning && (
         <View style={s.flag}>
           <Text style={s.flagText}>{RED_FLAGS}</Text>
         </View>
       )}
       <Text style={s.fine}>{DISCLAIMER}</Text>
+      <Button label={returning ? '去今日練習' : '做簡單評估（約 2 分鐘）'} onPress={onStart} />
+      {!returning && <Button label="先試簡單練習" kind="ghost" onPress={onQuick} />}
     </Backdrop>
   );
 }
 
 export function Ask({
   onNext,
+  onBack,
 }: {
-  onNext: (pain: Area, before: number, setting: Setting) => void;
+  onNext: (pain: Area | undefined, setting: Setting) => void;
+  onBack: () => void;
 }) {
-  const [pain, setPain] = useState<Area | null>(null);
+  const [pain, setPain] = useState<Area | 'none' | null>(null);
   const [setting, setSetting] = useState<Setting>('office');
-  const before = 5;
   return (
     <Backdrop>
       <Text style={s.h2}>邊度最唔舒服？</Text>
       <View style={s.wrap}>
+        <Pressable accessibilityRole="radio" accessibilityState={{ selected: pain === 'none' }} onPress={() => setPain('none')} style={[s.chip, pain === 'none' && s.chipOn]}><Text style={[s.chipText, pain === 'none' && s.chipTextOn]}>冇特別唔舒服</Text></Pressable>
         {AREAS.map((a) => (
-          <Pressable key={a.id} onPress={() => setPain(a.id)} style={[s.chip, pain === a.id && s.chipOn]}>
+          <Pressable key={a.id} accessibilityRole="radio" accessibilityState={{ selected: pain === a.id }} onPress={() => setPain(a.id)} style={[s.chip, pain === a.id && s.chipOn]}>
             <Text style={[s.chipText, pain === a.id && s.chipTextOn]}>
               {a.label}
             </Text>
@@ -75,21 +78,22 @@ export function Ask({
       <Text style={s.h3}>通常喺邊度做？</Text>
       <View style={s.wrap}>
         {SETTINGS.map((x) => (
-          <Pressable key={x.id} onPress={() => setSetting(x.id)} style={[s.chip, setting === x.id && s.chipOn]}>
+          <Pressable key={x.id} accessibilityRole="radio" accessibilityState={{ selected: setting === x.id }} onPress={() => setSetting(x.id)} style={[s.chip, setting === x.id && s.chipOn]}>
             <Text style={[s.chipText, setting === x.id && s.chipTextOn]}>{x.label}</Text>
           </Pressable>
         ))}
       </View>
-      <Button label="下一步" onPress={() => pain && onNext(pain, before, setting)} style={pain ? undefined : { opacity: 0.4 }} />
+      <Button label="下一步" onPress={() => pain && onNext(pain === 'none' ? undefined : pain, setting)} style={pain ? undefined : { opacity: 0.4 }} />
+      <Button label="返回" kind="ghost" onPress={onBack} />
     </Backdrop>
   );
 }
 
-export function Scale({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+export function Scale({ value, onChange, label = '' }: { label?: string; value: number | null; onChange: (n: number) => void }) {
   return (
     <View style={s.scale}>
       {Array.from({ length: 11 }, (_, i) => (
-        <Pressable key={i} onPress={() => onChange(i)} style={[s.dot, value === i && s.dotOn]}>
+        <Pressable key={i} accessibilityRole="radio" accessibilityLabel={`${label}${i} 分`} accessibilityState={{ selected: value === i }} onPress={() => onChange(i)} style={[s.dot, value === i && s.dotOn]}>
           <Text style={[s.dotText, value === i && { color: C.onDark }]}>{i}</Text>
         </Pressable>
       ))}
@@ -97,13 +101,14 @@ export function Scale({ value, onChange }: { value: number; onChange: (n: number
   );
 }
 
-export function Test({ onDone }: { onDone: (a: Answers) => void }) {
+export function Test({ onDone, onBack }: { onDone: (a: Answers) => void; onBack: () => void }) {
   const [i, setI] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const step = TESTS[i];
   const pick = (score: number | null) => {
     const next = { ...answers };
     if (score !== null) next[step.id] = score;
+    else delete next[step.id];
     setAnswers(next);
     if (i + 1 >= TESTS.length) onDone(next);
     else setI(i + 1);
@@ -119,9 +124,11 @@ export function Test({ onDone }: { onDone: (a: Answers) => void }) {
         <Button key={o} label={o} kind="ghost" onPress={() => pick(idx)} />
       ))}
       <Pressable onPress={() => pick(null)} style={s.link}>
-        <Text style={s.linkText}>有痛／做唔到，跳過呢條</Text>
+        <Text style={s.linkText}>做唔到／想跳過</Text>
       </Pressable>
+      <Button label="做嘅時候有痛" kind="ghost" onPress={() => pick(-1)} />
       <Text style={s.fine}>慢慢做，有痛就停，揀最接近嗰個。</Text>
+      <Button label="返回" kind="ghost" onPress={() => i ? setI(i - 1) : onBack()} />
     </Backdrop>
   );
 }
@@ -133,6 +140,8 @@ export function BodyMap({
   onLibrary,
   onBackup,
   hint,
+  avoided,
+  onRestore,
 }: {
   hint?: string;
   tightness: Tightness;
@@ -140,12 +149,15 @@ export function BodyMap({
   onRetest: () => void;
   onLibrary: () => void;
   onBackup: () => void;
+  avoided: { id: string; name: string }[];
+  onRestore: (id: string) => void;
 }) {
+  const [confirmRestore, setConfirmRestore] = useState<string | null>(null);
   const list = tightList(tightness, 4);
   return (
     <Backdrop glow={tightness}>
       <Progress />
-      <Text style={s.h2}>你嘅身體地圖</Text>
+      <Text style={s.h2}>你嘅自評活動地圖</Text>
       <Text style={s.p}>{mapSummary(tightness)}</Text>
       {hint ? <Text style={s.fine}>{hint}</Text> : null}
       <View style={s.wrap}>
@@ -157,6 +169,16 @@ export function BodyMap({
         ))}
       </View>
       <Button label="去今日練習" onPress={onNext} />
+      {avoided.length > 0 && <View style={s.flag}>
+        <Text style={s.flagText}>你曾喺練習後表示痛楚增加，以下動作已暫時避開。系統唔能夠判斷係邊個動作引起；有疑問請先諮詢醫護人員。測試時有痛嘅部位仍會按測試結果過濾。</Text>
+        {avoided.map((item) => <View key={item.id}>
+          <Text style={s.p}>{item.name}</Text>
+          {confirmRestore === item.id ? <View style={s.row}>
+            <Button label="確認重新加入" kind="ghost" style={s.half} onPress={() => { onRestore(item.id); setConfirmRestore(null); }} />
+            <Button label="取消" kind="ghost" style={s.half} onPress={() => setConfirmRestore(null)} />
+          </View> : <Button label="考慮重新加入" kind="ghost" onPress={() => setConfirmRestore(item.id)} />}
+        </View>)}
+      </View>}
       <View style={s.row}>
         <Button label="重新測試" kind="ghost" onPress={onRetest} style={s.half} />
         <Button label="動作庫" kind="ghost" onPress={onLibrary} style={s.half} />
@@ -206,6 +228,8 @@ export function PlanScreen({ initial, onNext, onBack }: { initial: Plan; onNext:
   const [setting, setSetting] = useState<Setting>(initial.setting);
   const [minutes, setMinutes] = useState(initial.minutes);
   const week = weekMinutes(sessions());
+  const [equipment, setEquipment] = useState<string[]>(initial.equipment ?? ['chair']);
+  const [seatedOnly, setSeatedOnly] = useState(initial.seatedOnly ?? false);
   const toggle = (a: Area) => setAreas((v) => (v.includes(a) ? v.filter((x) => x !== a) : [...v, a]));
   return (
     <Backdrop tall>
@@ -223,7 +247,7 @@ export function PlanScreen({ initial, onNext, onBack }: { initial: Plan; onNext:
             </Pressable>
           ))}
         </View>
-        <Text style={s.fine}>數字 = 今個星期已拉咗幾多分鐘 / 目標 {WEEK_TARGET_MIN} 分鐘</Text>
+        <Text style={s.fine}>靜態停留時間按部位分配；習慣參考，唔係療效門檻。分鐘 / 參考 {WEEK_TARGET_MIN} 分鐘</Text>
         <View style={s.wrap}>
           {SETTINGS.map((x) => (
             <Pressable key={x.id} onPress={() => setSetting(x.id)} style={[s.chip, setting === x.id && s.chipOn]}>
@@ -238,7 +262,9 @@ export function PlanScreen({ initial, onNext, onBack }: { initial: Plan; onNext:
             </Pressable>
           ))}
         </View>
-        <Button label="睇今日練習" onPress={() => onNext({ areas, setting, minutes })} />
+        <View style={s.wrap}>{['chair','wall','door'].map((id,i) => <Pressable key={id} accessibilityRole="checkbox" accessibilityState={{checked:equipment.includes(id)}} style={s.chip} onPress={() => setEquipment(v => v.includes(id) ? v.filter(x => x !== id) : [...v,id])}><Text>{equipment.includes(id) ? '✓ ' : ''}{['穩固椅','牆','門框'][i]}</Text></Pressable>)}</View>
+        <Button label={seatedOnly ? '只坐住做：開' : '只坐住做：關'} kind="ghost" onPress={() => setSeatedOnly(!seatedOnly)} />
+        <Button label="睇今日練習" onPress={() => onNext({ areas, setting, minutes, equipment, seatedOnly })} />
         <Button label="返回" kind="ghost" onPress={onBack} />
       </View>
     </Backdrop>
@@ -246,22 +272,32 @@ export function PlanScreen({ initial, onNext, onBack }: { initial: Plan; onNext:
 }
 
 export function Preview({
+  tension, onTension,
   routine,
   before,
   onBefore,
   onStart,
   onBack,
+  filtered,
+  alternatives,
+  onReplace,
 }: {
+  tension: number | null; onTension: (n: number) => void;
   routine: RoutineItem[];
-  before: number;
-  onBefore: (n: number) => void;
+  before: number | null;
+  onBefore: (n: number | null) => void;
   onStart: () => void;
   onBack: () => void;
+  filtered?: boolean;
+  alternatives: boolean[];
+  onReplace: (index: number) => void;
 }) {
-  const min = Math.round(routineSeconds(routine) / 60);
+  const min = Math.ceil(routineSeconds(routine) / 60);
+  const [highPain, setHighPain] = useState(false);
   return (
     <Backdrop tall>
       <Text style={s.h2}>今日練習 · 約 {min} 分鐘</Text>
+      {filtered && <Text style={s.flagText}>原定動作已調整；呢套唔會計作完整七日課程。相近動作未必適合每個人，請先睇注意事項，有痛就停。</Text>}
       <View>
         {routine.map((r, i) => (
           <View key={r.exercise.id} style={s.item}>
@@ -277,14 +313,20 @@ export function Preview({
                   : `慢慢做 ${r.seconds} 秒`}
                 {needOf(r.exercise) ? ` · ${needOf(r.exercise)}` : ''}
               </Text>
+              {r.exercise.caution ? <Text style={s.fine}>注意：{r.exercise.caution}</Text> : null}
+              {alternatives[i] && <Pressable accessibilityRole="button" onPress={() => onReplace(i)} style={s.link}><Text style={s.linkText}>換另一個相近動作</Text></Pressable>}
             </View>
           </View>
         ))}
       </View>
-      <Text style={s.label}>而家邊度有幾緊或者痛？（0 = 冇事，10 = 好痛）</Text>
-      <Scale value={before} onChange={onBefore} />
-      <Text style={s.fine}>會有聲音提示，記得開聲。拉到「有感覺」就夠，唔好拉到痛。</Text>
-      <Button label="開始" onPress={onStart} />
+      <Text style={s.label}>繃緊感：0 = 放鬆，10 = 非常繃緊（可略過）</Text>
+      <Scale label="繃緊感 " value={tension} onChange={onTension} />
+      <Text style={s.label}>而家痛楚有幾多分？（0 = 冇痛，10 = 非常痛）</Text>
+      <Scale value={before} onChange={n => { if (n >= 7) setHighPain(true); onBefore(n); }} />
+      {before !== null && before >= 7 && <Text style={s.flagText}>如果痛得厲害，請先停止練習並向醫生或物理治療師尋求意見。</Text>}
+      <Button label="唔評分" kind="ghost" onPress={() => onBefore(null)} />
+      <Text style={s.fine}>身體冷或坐咗好耐，先做輕量活動；短開場唔等於完整暖身。會有聲音提示。拉到「有感覺」就夠，唔好拉到痛。</Text>
+      {routine.length && (!highPain && (before === null || before < 7)) ? <Button label="開始" onPress={onStart} /> : !routine.length ? <Text style={s.flagText}>冇適合嘅動作。請返回並向醫生或物理治療師尋求意見。</Text> : null}
       <Button label="返回" kind="ghost" onPress={onBack} />
     </Backdrop>
   );
@@ -311,8 +353,8 @@ const s = StyleSheet.create({
   chipOn: { backgroundColor: C.text, borderColor: C.text },
   chipText: { color: C.sub, fontSize: 15, fontWeight: '600' },
   chipTextOn: { color: C.onDark },
-  scale: { flexDirection: 'row', justifyContent: 'space-between' },
-  dot: { flex: 1, marginHorizontal: 1.5, height: 34, borderRadius: 8, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  scale: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  dot: { width: 48, height: 48, borderRadius: 8, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
   dotOn: { backgroundColor: C.accent, borderColor: C.accent },
   dotText: { color: C.sub, fontSize: 12, fontWeight: '600' },
   tag: { flexDirection: 'row', alignItems: 'center', gap: 6, borderBottomWidth: 2, borderColor: C.accent, paddingVertical: 3 },

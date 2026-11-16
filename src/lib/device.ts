@@ -70,17 +70,39 @@ export function pickVoice(): Promise<VoicePick | null> {
   return picking;
 }
 
+let speaking = false;
+let speechGeneration = 0;
+let stopping: Promise<unknown> = Promise.resolve();
+
+// 講完一句先接下一句；唔排隊，避免播返已經過時嘅動作提示。
 export function say(text: string) {
-  try {
-    Speech.stop();
-    Speech.speak(text, { language: picked?.lang ?? 'zh-HK', voice: picked?.id, rate: 0.95 });
-  } catch {
-    // 唔支援語音就靜音繼續
-  }
+  if (speaking || !text.trim()) return;
+  speaking = true;
+  const generation = ++speechGeneration;
+  const release = () => {
+    if (generation === speechGeneration) speaking = false;
+  };
+  void stopping.then(() => {
+    if (generation !== speechGeneration) return;
+    try {
+      Speech.speak(text, {
+        language: picked?.lang ?? 'zh-HK', voice: picked?.id, rate: 0.95,
+        onDone: release, onStopped: release, onError: release,
+      });
+    } catch {
+      // 唔支援語音就靜音繼續
+      release();
+    }
+  });
 }
 
 export function hush() {
+  ++speechGeneration;
+  speaking = false;
   try {
-    Speech.stop();
-  } catch {}
+    // 等 stop 完成先播新句，避免舊嘅非同步 stop 截斷新語音。
+    stopping = Promise.resolve(Speech.stop()).catch(() => {});
+  } catch {
+    stopping = Promise.resolve();
+  }
 }

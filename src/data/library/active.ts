@@ -20,6 +20,23 @@ const make = (d: Def): Exercise => ({ level: 1, ...d }) as Exercise;
 
 export const ACTIVE: Exercise[] = [
   make({
+    id: 'seated-march', name: '坐椅交替抬腿', kind: '活化', areas: ['hips-legs'], floor: false, desk: true,
+    muscles: [{ id: 'psoas', weight: 1 }, { id: 'quads', weight: 0.5 }],
+    steps: ['坐喺穩固、冇轆嘅椅上，雙腳放地', '扶住椅邊，慢慢抬起一邊膝頭至舒服高度', '放返隻腳落地，再換另一邊'],
+    checks: ['身體向後倒', '抬腿太高或者屏住呼吸'],
+    why: '溫和活動髖部同大腿。',
+    caution: '椅要穩固；髖、膝或腰有痛就停。',
+    prop: { kind: 'chair' }, view: 'side',
+    reach: { lHand: { bone: 'world', at: [0.22, 0.45, 0.08] }, rHand: { bone: 'world', at: [-0.22, 0.45, 0.08] } },
+    keyframes: [
+      { at: 0, pose: SIT_HANDS, effort: 0.2, cue: '坐穩，雙腳放地' },
+      { at: 2, pose: { ...SIT_HANDS, lHip: [-1.9, 0, 0.04] }, effort: 0.7, cue: '慢慢抬起一邊膝頭' },
+      { at: 4, pose: SIT_HANDS, effort: 0.2, cue: '放返隻腳落地' },
+      { at: 6, pose: { ...SIT_HANDS, rHip: [-1.9, 0, -0.04] }, effort: 0.7, cue: '換另一邊' },
+      { at: 8, pose: SIT_HANDS, effort: 0.2, cue: '放返落地，慢慢重複' },
+    ],
+  }),
+  make({
     id: 'chin-tuck', name: '收下巴', kind: '活化', areas: ['neck'], floor: false, desk: true,
     muscles: [{ id: 'neck', weight: 1 }, { id: 'traps', weight: 0.4 }],
     steps: ['坐直，眼望前面', '下巴向後收，似整個「雙下巴」', '後頸拉長，停 2 秒', '放返，再嚟'],

@@ -33,8 +33,8 @@ export const PROGRAMS: Program[] = [
     ],
   },
   {
-    id: 'lower-back', name: '下背唔再緊', emoji: '🪑', area: 'lower-back', setting: 'home',
-    blurb: '坐耐腰酸？髖同大腿後側鬆咗，腰就輕鬆。要瞓地。',
+    id: 'lower-back', name: '腰髖輕鬆活動', emoji: '🪑', area: 'lower-back', setting: 'home',
+    blurb: '坐耐腰酸？試下溫和活動，留意自己感受。要瞓地。',
     focus: ['erectors', 'glutes', 'hamstrings', 'psoas'],
     days: [
       { title: '嬰兒式入門', ids: ['seated-cat-cow', 'child-pose', 'supine-figure4', 'slow-breath'] },
@@ -91,10 +91,17 @@ export const PROGRAMS: Program[] = [
 ];
 
 export const QUICKS: Quick[] = [
+  { id: 'seated-neck', name: '坐椅頸肩', emoji: '🪑', blurb: '轉膊、頸側、後膊，自然呼吸收尾', ids: ['shoulder-roll','upper-trap-stretch','cross-body-shoulder','natural-breath'] },
+  { id: 'seated-hips', name: '久坐腰髖', emoji: '🪑', blurb: '坐穩活動腰髖，唔使落地', ids: ['seated-cat-cow','seated-figure4','hamstring-chair','natural-breath'] },
+
   { id: 'office-reset', name: '寫字樓重設', emoji: '🏢', blurb: '收下巴 → 頸 → 膊 → 手腕 → 扭腰', ids: ['chin-tuck', 'upper-trap-stretch', 'cross-body-shoulder', 'wrist-flexor-stretch', 'seated-twist'] },
-  { id: 'lunch-2', name: '午休 2 分鐘', emoji: '🔄', blurb: '轉膊 + 頸側 + 手腕', ids: ['shoulder-roll', 'upper-trap-stretch', 'wrist-extensor-stretch'] },
+  { id: 'lunch-2', name: '午休短休息', emoji: '🔄', blurb: '轉膊 + 頸側 + 手腕', ids: ['shoulder-roll', 'upper-trap-stretch', 'wrist-extensor-stretch'] },
   { id: 'home-relax', name: '屋企放鬆', emoji: '🏠', blurb: '髖 → 腿 → 腰 → 呼吸', ids: ['low-lunge', 'hamstring-chair', 'supine-figure4', 'child-pose', 'slow-breath'] },
-  { id: 'bedtime', name: '睡前', emoji: '🌙', blurb: '嬰兒式、拉臀、慢呼吸', ids: ['child-pose', 'supine-figure4', 'slow-breath'] },
+  { id: 'bedtime', name: '睡前', emoji: '🌙', blurb: '嬰兒式、拉臀、慢呼吸', ids: ['supine-figure4', 'lying-breath'] },
+  { id: 'seated-break', name: '坐低輕鬆郁', emoji: '🪑', blurb: '坐椅活動肩膊、胸背，慢慢呼吸', ids: ['shoulder-roll', 'seated-cat-cow', 'seated-rotation', 'slow-breath'] },
+  { id: 'standing-break', name: '起身伸展', emoji: '🌿', blurb: '起身活動髖部同小腿，旁邊準備穩固支撐', ids: ['standing-hip-flexor', 'wall-calf-stretch', 'hamstring-chair', 'slow-breath'] },
+  { id: 'gentle-evening', name: '晚間慢活', emoji: '🌙', blurb: '溫和活動上背同肩膊，以呼吸作結', ids: ['shoulder-roll', 'seated-thoracic-ext', 'seated-cat-cow', 'slow-breath'] },
+  { id: 'seated-mobility', name: '坐椅全身活動', emoji: '🪑', blurb: '坐穩做肩背活動同交替抬腿，最後慢慢呼吸', ids: ['shoulder-roll', 'seated-march', 'seated-rotation', 'slow-breath'] },
 ];
 
 // 推薦：先睇用家話邊度痛（最重要），再睇測試邊啲肌肉緊、喺寫字樓定屋企。做晒 7 日嘅排後。

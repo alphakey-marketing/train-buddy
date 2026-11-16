@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { Text } from 'react-native';
 import { EXERCISES } from './src/data/exercises';
-import { markDone, nextDay, Program } from './src/data/programs';
+import { markDone, nextDay, Program, QUICKS } from './src/data/programs';
 import { Area } from './src/data/types';
-import { Answers, computeTightness, Tightness } from './src/lib/bodyTest';
+import { Answers, avoidedAreas, computeTightness, Tightness } from './src/lib/bodyTest';
 import { addSession, sessions, streak } from './src/lib/history';
-import { DEFAULT_PLAN, Plan, prescribe, RoutineItem, secondsOf, Setting } from './src/lib/prescribe';
-import { load, save, track } from './src/lib/storage';
+import { DEFAULT_PLAN, Plan, prescribe, RoutineItem, secondsOf, Setting, available } from './src/lib/prescribe';
+import { load, save, storageUnavailable, track } from './src/lib/storage';
 import { Backup } from './src/screens/Backup';
 import { Done, RateAfter } from './src/screens/Finish';
 import { Lab } from './src/screens/Lab';
@@ -16,7 +17,7 @@ import { ProgramDetail } from './src/screens/Programs';
 import { Ask, BodyMap, PlanScreen, Preview, Test, Welcome } from './src/screens/Onboarding';
 import { Player } from './src/screens/Player';
 
-type Profile = { pain: Area; setting?: Setting; answers: Answers; tightness: Tightness; at: number };
+type Profile = { pain?: Area; setting?: Setting; answers: Answers; tightness: Tightness; at: number };
 type Screen = 'welcome' | 'ask' | 'test' | 'hub' | 'program' | 'map' | 'plan' | 'preview' | 'play' | 'rate' | 'done' | 'library' | 'backup';
 
 const labQuery = (() => {
@@ -34,29 +35,55 @@ export default function App() {
 }
 
 function Main() {
+  const [storageError, setStorageError] = useState(storageUnavailable);
+  const [openedAt] = useState(() => Date.now());
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onError = () => setStorageError(true);
+    window.addEventListener('train-buddy-storage-error', onError);
+    return () => window.removeEventListener('train-buddy-storage-error', onError);
+  }, []);
   const [profile, setProfile] = useState<Profile | null>(() => load<Profile | null>('profile', null));
   // 返嚟嘅用家直接去主頁，唔使再撳一次
   const [screen, setScreen] = useState<Screen>(() => (load<Profile | null>('profile', null) ? 'hub' : 'welcome'));
-  const [pain, setPain] = useState<Area>(() => profile?.pain ?? 'neck');
+  const [pain, setPain] = useState<Area | undefined>(() => profile?.pain);
   const [setting, setSetting] = useState<Setting>(() => profile?.setting ?? 'office');
-  const [before, setBefore] = useState(5);
-  const [after, setAfter] = useState(0);
+  const [before, setBefore] = useState<number | null>(null);
+  const [tensionBefore, setTensionBefore] = useState<number | null>(null);
+  const [tensionAfter, setTensionAfter] = useState<number | null>(null);
+  const [after, setAfter] = useState<number | null>(null);
 
   useEffect(() => track('open'), []);
 
   const [plan, setPlan] = useState<Plan>(() => ({ ...DEFAULT_PLAN, ...load<Partial<Plan>>('plan', {}) }));
   const [routine, setRoutine] = useState<RoutineItem[]>([]);
+  const [completed, setCompleted] = useState<string[]>([]);
+  const [filtered, setFiltered] = useState(false);
+  const [avoidedIds, setAvoidedIds] = useState<string[]>(() => load<string[]>('avoidedExercises', []));
   const [prog, setProg] = useState<Program | null>(null);
   const [day, setDay] = useState<number | null>(null); // 課程第幾日（null = 快練／自訂）
   const [back, setBack] = useState<Screen>('hub');
   const toRoutine = (ids: string[]): RoutineItem[] =>
     ids.flatMap((id) => {
       const exercise = EXERCISES.find((e) => e.id === id);
-      return exercise ? [{ exercise, seconds: secondsOf(exercise) }] : [];
+      const blocked = avoidedAreas(profile?.answers ?? {});
+      return exercise && !avoidedIds.includes(id) && (exercise.kind === '放鬆' || !exercise.areas.some((a) => blocked.includes(a))) ? [{ exercise, seconds: secondsOf(exercise) }] : [];
     });
+  const alternativeFor = (item: RoutineItem) => EXERCISES.find((e) =>
+    e.id !== item.exercise.id && !routine.some((r) => r.exercise.id === e.id)
+    && e.kind === item.exercise.kind && e.level <= item.exercise.level
+    && available(e, plan) && e.prop?.kind === item.exercise.prop?.kind && e.floor === item.exercise.floor && (!item.exercise.desk || e.desk)
+    && e.areas.some((a) => item.exercise.areas.includes(a))
+    && !avoidedIds.includes(e.id) && !e.areas.some((a) => avoidedAreas(profile?.answers ?? {}).includes(a)),
+  );
   const begin = (ids: string[], d: number | null, from: Screen) => {
-    setRoutine(toRoutine(ids));
-    setDay(d);
+    setCompleted([]);
+    setBefore(null);
+    setTensionBefore(null); setTensionAfter(null);
+    const selected = toRoutine(ids);
+    setFiltered(selected.length !== ids.length);
+    setRoutine(selected);
+    setDay(selected.length === ids.length ? d : null);
     setBack(from);
     setScreen('preview');
   };
@@ -64,7 +91,7 @@ function Main() {
   const hint = (() => {
     if (!log.length) return undefined;
     const last = log[log.length - 1];
-    const days = Math.max(0, Math.floor((Date.now() - last.at) / 86400000));
+    const days = Math.max(0, Math.floor((openedAt - last.at) / 86400000));
     const prev = log.length > 1 ? log[log.length - 2] : null;
     const diff = prev ? ` · 同上次比${last.avg < prev.avg - 0.02 ? '鬆咗' : last.avg > prev.avg + 0.02 ? '緊咗啲' : '差唔多'}` : '';
     return `上次測試：${days === 0 ? '今日' : `${days} 日前`}${diff}${days >= 14 ? ' · 建議重新測試' : ''}`;
@@ -82,7 +109,7 @@ function Main() {
 
   // 練完頁顯示課程進度
   const programNote = (() => {
-    if (!prog || day === null) return undefined;
+    if (!prog || day === null || completed.length !== routine.length || (before !== null && after !== null && after > before)) return undefined;
     const n = nextDay(prog.id);
     return n >= 7 ? `${prog.name} · 七日全部完成！` : `${prog.name} · 完成第 ${day + 1} 日，聽日做第 ${n + 1} 日`;
   })();
@@ -93,6 +120,12 @@ function Main() {
         return (
           <Welcome
             returning={!!profile}
+            onQuick={() => {
+              const guest: Profile = { answers: {}, tightness: {}, at: Date.now() };
+              setProfile(guest);
+              save('profile', guest);
+              begin(QUICKS.find((q) => q.id === 'lunch-2')!.ids, null, 'hub');
+            }}
             onStart={() => {
               if (profile) setScreen('hub');
               else {
@@ -105,9 +138,9 @@ function Main() {
       case 'ask':
         return (
           <Ask
-            onNext={(a, b, st) => {
+            onBack={() => setScreen(profile ? 'map' : 'welcome')}
+            onNext={(a, st) => {
               setPain(a);
-              setBefore(b);
               setSetting(st);
               setPlan((pl) => ({ ...pl, setting: st }));
               setScreen('test');
@@ -115,7 +148,7 @@ function Main() {
           />
         );
       case 'test':
-        return <Test onDone={finishTest} />;
+        return <Test onDone={finishTest} onBack={() => setScreen('ask')} />;
       case 'hub':
         return profile ? (
           <HubNike
@@ -151,17 +184,30 @@ function Main() {
             onRetest={() => setScreen('ask')}
             onLibrary={() => setScreen('library')}
             onBackup={() => setScreen('backup')}
+            avoided={avoidedIds.map((id) => ({ id, name: EXERCISES.find((e) => e.id === id)?.name ?? id }))}
+            onRestore={(id) => {
+              const next = avoidedIds.filter((item) => item !== id);
+              setAvoidedIds(next);
+              save('avoidedExercises', next);
+            }}
           />
         ) : null;
       case 'plan':
         return profile ? (
           <PlanScreen
             initial={plan}
-            onBack={() => setScreen('map')}
+            onBack={() => setScreen('hub')}
             onNext={(pl) => {
               setPlan(pl);
               save('plan', pl);
-              setRoutine(prescribe(profile.tightness, pl));
+              const blocked = avoidedAreas(profile.answers);
+              const proposed = prescribe(profile.tightness, pl, sessions(), e => avoidedIds.includes(e.id) || (e.kind !== '放鬆' && e.areas.some(a => blocked.includes(a))));
+              const selected = proposed.filter((r) => !avoidedIds.includes(r.exercise.id) && (r.exercise.kind === '放鬆' || !r.exercise.areas.some((a) => blocked.includes(a))));
+              setFiltered(selected.length !== proposed.length);
+              setRoutine(selected);
+              setCompleted([]);
+              setBefore(null);
+    setTensionBefore(null); setTensionAfter(null);
               setDay(null);
               setBack('plan');
               setScreen('preview');
@@ -171,8 +217,18 @@ function Main() {
       case 'preview':
         return (
           <Preview
+            tension={tensionBefore} onTension={setTensionBefore}
             routine={routine}
             before={before}
+            filtered={filtered}
+            alternatives={routine.map((item) => !!alternativeFor(item))}
+            onReplace={(index) => {
+              const replacement = alternativeFor(routine[index]);
+              if (!replacement) return;
+              setRoutine((items) => items.map((item, i) => i === index ? { exercise: replacement, seconds: secondsOf(replacement) } : item));
+              setFiltered(true);
+              setDay(null);
+            }}
             onBefore={setBefore}
             onStart={() => {
               track('routine_start');
@@ -184,22 +240,29 @@ function Main() {
       case 'play':
         return (
           <Player
+            onUncomfortable={(id) => { const ids = [...new Set([...avoidedIds, id])]; setAvoidedIds(ids); save('avoidedExercises', ids); }}
             routine={routine}
-            onDone={() => {
+            onDone={(ids) => {
+              setCompleted(ids);
               track('routine_done');
               setScreen('rate');
             }}
-            onQuit={() => setScreen(back === 'program' ? 'program' : 'hub')}
+            onQuit={(ids) => {
+              setCompleted(ids);
+              if (ids.length) setScreen('rate');
+              else setScreen(back === 'program' ? 'program' : 'hub');
+            }}
           />
         );
       case 'rate':
         return (
           <RateAfter
+            tension={tensionAfter} onTension={setTensionAfter}
             before={before}
             onSubmit={(a) => {
               setAfter(a);
-              if (prog && day !== null) markDone(prog.id, day);
-              addSession({ at: Date.now(), ids: routine.map((r) => r.exercise.id), before, after: a });
+              if (prog && day !== null && completed.length === routine.length && !(before !== null && a !== null && a > before)) markDone(prog.id, day);
+              if (completed.length) addSession({ at: Date.now(), ids: completed, before, after: a, tensionBefore, tensionAfter });
               track('rate_after');
               setScreen('done');
             }}
@@ -208,10 +271,13 @@ function Main() {
       case 'done':
         return (
           <Done
+            tensionBefore={tensionBefore} tensionAfter={tensionAfter}
             before={before}
             after={after}
             streakDays={streak(sessions())}
             programNote={programNote}
+            completedCount={completed.length}
+            totalCount={routine.length}
             onHome={() => setScreen('hub')}
           />
         );
@@ -225,6 +291,7 @@ function Main() {
   return (
     <>
       <StatusBar style="dark" />
+      {storageError && <Text accessibilityRole="alert" style={{ padding: 10, backgroundColor: '#fff0df', color: '#753800' }}>未能儲存紀錄，關閉頁面後資料可能會消失。請檢查瀏覽器儲存設定。</Text>}
       {body}
     </>
   );

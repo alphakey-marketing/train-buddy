@@ -8,10 +8,10 @@ export const C = {
   line: '#e4d9cb',
   text: '#1f2430',
   sub: '#4b5262',
-  mute: '#7a7f8a',
-  accent: '#e0502f', // 珊瑚橙（白字喺上面夠對比）
-  calm: '#2a9d8f', // 青綠：進度、完成
-  warn: '#b86e00',
+  mute: '#595f6b',
+  accent: '#ac361e', // 珊瑚橙（白字喺上面夠對比）
+  calm: '#20776c', // 青綠：進度、完成
+  warn: '#805000',
   onDark: '#ffffff', // 深色／橙色底上面嘅字
 };
 
@@ -48,7 +48,7 @@ export function Button({
   style?: ViewStyle;
 }) {
   return (
-    <Pressable onPress={onPress} style={[s.btn, kind === 'ghost' && s.ghost, style]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={[s.btn, kind === 'ghost' && s.ghost, style]}>
       <Text style={[s.btnText, kind === 'ghost' && { color: C.text }]}>{label}</Text>
     </Pressable>
   );

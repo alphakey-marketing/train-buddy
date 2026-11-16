@@ -40,6 +40,7 @@ export type Motion = {
   muscles: { id: MuscleId; weight: number }[]; // weight 1 = 主力，0.5 = 輔助
   keyframes: Keyframe[]; // 最後一格要返到起點，先會循環
   hold?: Hold; // 有就係靜態拉筋，播放器用呢個，唔用 keyframes
+  breathing?: boolean;
   reach?: Reach; // 循環動作全程手腳要掂到邊
   prop?: Prop;
   view?: 'front' | 'side' | 'back'; // 3D 最好睇嘅角度

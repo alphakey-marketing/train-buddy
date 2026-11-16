@@ -64,13 +64,14 @@ function sampleHold(ex: Exercise, time: number, holdSec?: number): Sample {
   } else if (u < MOVE_IN + hold) {
     const v = u - MOVE_IN;
     // 停住時輕輕呼吸，唔好似石像
-    const breath = Math.sin((v / 5) * Math.PI * 2);
+    const bt = v % 10;
+    const breath = ex.breathing ? Math.sin((bt < 4 ? bt / 4 : 1 + (bt - 4) / 6) * Math.PI / 2) : Math.sin((v / 5) * Math.PI * 2);
     pose = { ...target, spine: [target.spine[0] - 0.012 * breath, target.spine[1], target.spine[2]], lShrug: target.lShrug + 0.02 * breath, rShrug: target.rShrug + 0.02 * breath };
     w = 1;
     phase = 'hold';
     left = hold - v;
     const c = h.cues[Math.min(h.cues.length - 1, Math.floor((v / hold) * h.cues.length))] ?? '';
-    cue = side ? swapSides(c) : c;
+    cue = ex.breathing ? (v % 10 < 4 ? '輕輕吸氣 · 4 秒' : '慢慢呼氣 · 6 秒') : side ? swapSides(c) : c;
   } else {
     const k = (u - MOVE_IN - hold) / MOVE_OUT;
     pose = blendPose(target, base, k);

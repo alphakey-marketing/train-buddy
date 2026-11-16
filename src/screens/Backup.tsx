@@ -44,6 +44,7 @@ export function Backup({ onBack }: { onBack: () => void }) {
         紀錄只係存喺呢部手機嘅瀏覽器。清除瀏覽器資料、換手機，紀錄就會冇晒。間唔中匯出一份，有事可以匯入返。
       </Text>
       <Text style={s.stat}>而家有 {count} 次練習紀錄</Text>
+      <Text style={s.p}>匯入會以備份入面嘅項目取代現有資料；建議先匯出目前紀錄。</Text>
 
       {web ? (
         <>

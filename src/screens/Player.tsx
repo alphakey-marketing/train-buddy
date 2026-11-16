@@ -1,38 +1,38 @@
 // 「跟住做」：全屏公仔 + 倒數 + 語音提示 + 自動轉下一個
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
 import { Demo } from '../components/Demo';
+import { MUSCLES } from '../data/muscles';
 import { Exercise, needOf, plainName } from '../data/exercises';
 import { buzz, hush, pickVoice, say as speak, useScreenAwake, VoicePick } from '../lib/device';
 import { MOVE_IN, MOVE_OUT } from '../lib/motion';
-import { RoutineItem } from '../lib/prescribe';
+import { readySeconds, RoutineItem } from '../lib/prescribe';
 import { C, SERIF } from '../ui/theme';
 
 // 準備秒數：第一個同轉姿勢（椅 → 門框 → 地）要耐啲
-function readyFor(prev: Exercise | undefined, cur: Exercise): number {
-  if (!prev) return 6;
-  const moved = prev.floor !== cur.floor || prev.prop?.kind !== cur.prop?.kind;
-  return moved ? 10 : 5;
-}
+const readyFor = readySeconds;
 
 // 拉筋分邊：而家第幾邊、呢邊仲剩幾秒
 function sideInfo(e: Exercise, elapsed: number): { side: number; sides: number; left: number } | null {
   if (!e.hold) return null;
   const per = MOVE_IN + e.hold.seconds + MOVE_OUT;
   const side = Math.min(e.hold.sides - 1, Math.floor(elapsed / per));
-  return { side, sides: e.hold.sides, left: Math.max(0, Math.ceil(per * (side + 1) - elapsed)) };
+  return { side, sides: e.hold.sides, left: Math.max(0, Math.ceil(MOVE_IN + e.hold.seconds - (elapsed % per))) };
 }
 
 function say(text: string, on: boolean) {
   if (on) speak(text);
 }
 
-export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; onDone: () => void; onQuit: () => void }) {
+export function Player({ routine, onDone, onQuit, onUncomfortable }: { onUncomfortable: (id: string) => void; routine: RoutineItem[]; onDone: (completed: string[]) => void; onQuit: (completed: string[]) => void }) {
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<'ready' | 'go'>('ready');
   const [left, setLeft] = useState(() => readyFor(undefined, routine[0].exercise));
   const [paused, setPaused] = useState(false);
   const [voice, setVoice] = useState(true);
+  const [quiet, setQuiet] = useState(false);
+  const [natural, setNatural] = useState(false);
+  const [details, setDetails] = useState(false);
   const [cue, setCue] = useState('');
   const [quitAsk, setQuitAsk] = useState(false);
   const [voiceInfo, setVoiceInfo] = useState<VoicePick | null | 'wait'>('wait');
@@ -57,23 +57,39 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
     setCue('');
     if (idx > 0) buzz('change');
     const moved = ready > 5 && need ? `${need}。` : '';
+    hush();
     say(`${idx === 0 ? '開始。' : '下一個，'}${plainName(item.exercise)}。${moved}`, voiceRef.current);
   }, [idx]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 中途離開先收聲；做完就等佢講完「好嘢」
   const finished = useRef(false);
+  const completed = useRef<string[]>([]);
+  const advancing = useRef(false);
+  useEffect(() => { advancing.current = false; }, [idx]);
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const pauseWhenHidden = () => {
+      if (document.hidden) { setPaused(true); hush(); }
+    };
+    document.addEventListener('visibilitychange', pauseWhenHidden);
+    return () => document.removeEventListener('visibilitychange', pauseWhenHidden);
+  }, []);
   useEffect(() => () => {
     if (!finished.current) hush();
   }, []);
 
-  const advance = useCallback(() => {
+  const advance = useCallback((skipped = false) => {
+    if (advancing.current) return;
+    advancing.current = true;
+    if (!skipped) completed.current.push(item.exercise.id);
     if (idx + 1 >= routine.length) {
+      hush();
       say('做完喇，好嘢。', voiceRef.current);
       buzz('done');
       finished.current = true;
-      onDone();
+      onDone(completed.current);
     } else setIdx(idx + 1);
-  }, [idx, routine.length, onDone]);
+  }, [idx, item.exercise.id, routine.length, onDone]);
 
   // 每秒倒數
   useEffect(() => {
@@ -84,13 +100,13 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
 
   useEffect(() => {
     // 最後 3 秒每秒震一下
-    if (left > 0 && left <= 3 && !paused) buzz('tick');
+    if (left > 0 && left <= 3 && !paused && !quiet) buzz('tick');
     if (left > 0) return;
     if (phase === 'ready') {
       buzz('change');
       setPhase('go');
       setLeft(item.seconds);
-    } else advance();
+    } else advance(false);
   }, [left]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 「結束」要撳兩下，免得誤觸
@@ -104,20 +120,20 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
   const onCue = useCallback(
     (c: string) => {
       setCue(c);
-      if (phase === 'go' && !paused) say(c, voiceRef.current);
+      if (phase === 'go' && !paused && !quiet) say(c, voiceRef.current);
     },
-    [phase, paused],
+    [phase, paused, quiet],
   );
 
   const total = routine.reduce((n, r) => n + r.seconds, 0);
   const elapsed = phase === 'go' ? item.seconds - left : 0;
   const doneSec = routine.slice(0, idx).reduce((n, r) => n + r.seconds, 0) + elapsed;
   const sideNow = phase === 'go' ? sideInfo(item.exercise, elapsed) : null;
-  const bigNum = phase === 'ready' ? `準備 ${Math.max(0, left)}` : String(sideNow ? sideNow.left : Math.max(0, left));
+  const bigNum = phase === 'ready' ? `準備 ${Math.max(0, left)}` : (item.exercise.hold && elapsed % (MOVE_IN + item.exercise.hold.seconds + MOVE_OUT) < MOVE_IN ? '慢慢入位' : sideNow?.left === 0 ? '慢慢放鬆' : String(sideNow ? sideNow.left : Math.max(0, left)));
 
   // 上：名同提示；中：公仔；下：倒數同掣。三格分開，唔會遮住公仔
   return (
-    <View style={s.root}>
+    <ScrollView style={s.root} contentContainerStyle={{flexGrow:1}}>
       <View style={s.top}>
         <View style={s.bar}>
           <View style={[s.fill, { width: `${(doneSec / total) * 100}%` }]} />
@@ -130,6 +146,9 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
         <Text style={s.cue} numberOfLines={2}>
           {phase === 'ready' ? (item.exercise.hold?.enter ?? item.exercise.steps[0]) : cue}
         </Text>
+        <Pressable accessibilityRole="button" onPress={() => setDetails(!details)} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{color:C.sub}}> {details ? '收起教學' : '動作教學與容易版本'} </Text></Pressable>
+        {details && <Text style={{color:C.sub}}>只做舒服幅度；伸展應喺{item.exercise.muscles.filter(m => m.weight >= 0.8).map(m => MUSCLES[m.id].plain).join('、') || '目標位置'}有輕微拉感，關節唔應痛。縮細幅度或跳過都可以。退出時慢慢返回起始姿勢。{item.exercise.steps.join('；')}</Text>}
+        {item.exercise.caution ? <Text style={s.warn}>注意：{item.exercise.caution}</Text> : null}
         {voice && voiceInfo !== 'wait' && !voiceInfo?.cantonese && (
           <Text style={s.warn}>
             {voiceInfo ? `部機冇廣東話語音，用緊：${voiceInfo.name}` : '部機冇中文語音，只會顯示文字'}
@@ -139,7 +158,7 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
 
       <View style={s.stage}>
         <Demo
-          exercise={item.exercise}
+          exercise={natural && item.exercise.breathing ? { ...item.exercise, breathing: false, hold: { ...item.exercise.hold!, cues: ['自然呼吸，唔使追秒數'] } } : item.exercise}
           playing={phase === 'go' && !paused}
           speed={1}
           hold={item.exercise.hold?.seconds}
@@ -168,25 +187,30 @@ export function Player({ routine, onDone, onQuit }: { routine: RoutineItem[]; on
           </View>
           {next && <Text style={s.next}>下一個：{plainName(next.exercise)}</Text>}
         </View>
+        {phase === 'ready' && <Pressable accessibilityRole="button" style={s.pill} onPress={() => { hush(); setPaused(!paused); }}><Text style={s.pillText}>{paused ? '我準備好，繼續倒數' : '需要多啲準備時間'}</Text></Pressable>}
         <View style={s.controls}>
-          <Pressable
+          <Pressable accessibilityRole="button" style={s.pill} onPress={() => { hush(); setPaused(true); onUncomfortable(item.exercise.id); onQuit(completed.current); }}><Text style={s.pillText}>呢個動作唔舒服，停止</Text></Pressable>
+          <Pressable accessibilityRole="button" style={s.pill} onPress={() => { hush(); setQuiet(!quiet); }}><Text style={s.pillText}>{quiet ? '安靜模式開' : '安靜模式關'}</Text></Pressable>
+          {item.exercise.breathing && <Pressable accessibilityRole="button" style={s.pill} onPress={() => { hush(); setNatural(!natural); }}><Text style={s.pillText}>{natural ? '自然呼吸' : '4／6 秒呼吸'}</Text></Pressable>}
+
+          <Pressable accessibilityRole="button"
             style={[s.pill, quitAsk && s.danger]}
-            onPress={() => (quitAsk ? onQuit() : setQuitAsk(true))}
+            onPress={() => (quitAsk ? onQuit(completed.current) : setQuitAsk(true))}
           >
             <Text style={[s.pillText, quitAsk && { color: C.onDark }]}>{quitAsk ? '確定結束？' : '結束'}</Text>
           </Pressable>
-          <Pressable style={[s.pill, s.main]} onPress={() => setPaused((p) => !p)}>
+          <Pressable accessibilityRole="button" style={[s.pill, s.main]} onPress={() => setPaused((p) => { if (!p) hush(); return !p; })}>
             <Text style={[s.pillText, { color: C.onDark }]}>{paused ? '繼續' : '暫停'}</Text>
           </Pressable>
-          <Pressable style={s.pill} onPress={advance}>
+          <Pressable accessibilityRole="button" accessibilityLabel="跳過目前動作" style={s.pill} onPress={() => advance(true)}>
             <Text style={s.pillText}>跳過</Text>
           </Pressable>
-          <Pressable style={s.pill} onPress={() => setVoice((v) => !v)}>
+          <Pressable accessibilityRole="button" style={s.pill} onPress={() => setVoice((v) => { if (v) hush(); return !v; })}>
             <Text style={s.pillText}>{voice ? '聲開' : '聲關'}</Text>
           </Pressable>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -199,7 +223,7 @@ const s = StyleSheet.create({
   title: { color: C.text, fontSize: 28, fontWeight: '900', fontFamily: SERIF },
   cue: { color: C.sub, fontSize: 16, marginTop: 4, minHeight: 44, lineHeight: 22 },
   warn: { color: C.warn, fontSize: 12, marginTop: 4 },
-  stage: { flex: 1 },
+  stage: { flex: 1, minHeight: 240 },
   pausedTag: { position: 'absolute', top: 12, alignSelf: 'center', backgroundColor: C.text, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999 },
   pausedText: { color: C.onDark, fontSize: 14, fontWeight: '700' },
   bottom: { backgroundColor: C.panel, borderTopWidth: 1, borderColor: C.line, paddingTop: 14, paddingBottom: 28, paddingHorizontal: 16, gap: 12 },
@@ -207,7 +231,7 @@ const s = StyleSheet.create({
   big: { color: C.text, fontSize: 48, fontWeight: '900', fontFamily: SERIF, fontVariant: ['tabular-nums'] },
   side: { color: C.mute, fontSize: 13, marginTop: -2 },
   next: { color: C.mute, fontSize: 14, flexShrink: 1, textAlign: 'right', marginLeft: 12, marginBottom: 6 },
-  controls: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
+  controls: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
   pill: { paddingHorizontal: 16, paddingVertical: 12, borderRadius: 999, borderWidth: 1, borderColor: C.line, backgroundColor: C.card },
   main: { backgroundColor: C.text, borderColor: C.text, paddingHorizontal: 26 },
   danger: { backgroundColor: C.accent, borderColor: C.accent },

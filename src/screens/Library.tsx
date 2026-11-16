@@ -30,6 +30,7 @@ export default function Library({ onBack, area: start }: { onBack: () => void; a
   const firstOf = (a: AreaPick, g: Level) => inArea(a).find((e) => e.level === g && (e.hold || e.kind === '活化')) ?? inArea(a).find((e) => e.level === g);
   const [exerciseId, setExerciseId] = useState(() => (firstOf(start ?? 'all', 1) ?? EXERCISES[0]).id);
   const [showInfo, setShowInfo] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [playing, setPlaying] = useState(true);
   const [view, setView] = useState<DemoView>('auto');
   const [speed, setSpeed] = useState(1);
@@ -89,16 +90,17 @@ export default function Library({ onBack, area: start }: { onBack: () => void; a
         <Pressable onPress={onBack} style={[styles.pill, styles.back]}>
           <Text style={styles.pillText}>‹ 返回</Text>
         </Pressable>
-        <View style={styles.viewSwitch}>
+        {showAdvanced && <View style={styles.viewSwitch}>
           {VIEWS.map((v) => (
             <Pressable key={v.id} onPress={() => setView(v.id)} style={[styles.pill, view === v.id && styles.pillOn]}>
               <Text style={[styles.pillText, view === v.id && styles.pillTextOn]}>{v.label}</Text>
             </Pressable>
           ))}
-        </View>
+        </View>}
       </View>
 
       <View style={styles.panel}>
+        {exercise.caution && !showInfo && <Text style={styles.infoCaution}>注意：{exercise.caution}</Text>}
         {showInfo && hasInfo ? (
           <ScrollView style={styles.info} contentContainerStyle={{ paddingBottom: 8 }}>
             {exercise.steps && (
@@ -186,7 +188,10 @@ export default function Library({ onBack, area: start }: { onBack: () => void; a
               <Text style={[styles.pillText, showInfo && styles.pillTextOn]}>說明</Text>
             </Pressable>
           )}
-          {SPEEDS.map((s) => (
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: showAdvanced }} onPress={() => setShowAdvanced((v) => !v)} style={styles.pill}>
+            <Text style={styles.pillText}>{showAdvanced ? '收起設定' : '角度／速度'}</Text>
+          </Pressable>
+          {showAdvanced && SPEEDS.map((s) => (
             <Pressable key={s} onPress={() => setSpeed(s)} style={[styles.pill, speed === s && styles.pillOn]}>
               <Text style={[styles.pillText, speed === s && styles.pillTextOn]}>{s}x</Text>
             </Pressable>

@@ -261,7 +261,7 @@ export const STRETCH: Exercise[] = [
     },
   }),
   make({
-    id: 'slow-breath', name: '慢呼吸放鬆', kind: '放鬆', areas: ['neck', 'upper-back', 'lower-back'], floor: false, desk: true,
+    id: 'slow-breath', breathing: true, name: '慢呼吸放鬆', kind: '放鬆', areas: ['neck', 'upper-back', 'lower-back'], floor: false, desk: true,
     muscles: [{ id: 'abs', weight: 0.3 }, { id: 'traps', weight: 0.3 }],
     steps: ['坐直，雙手放大腿', '鼻吸 4 秒', '口慢慢呼 6 秒', '肩頸放鬆'],
     checks: ['聳膊'],
@@ -275,3 +275,12 @@ export const STRETCH: Exercise[] = [
     },
   }),
 ];
+
+const breath = STRETCH.find(e => e.id === 'slow-breath')!;
+STRETCH.push({ ...breath, id: 'natural-breath', name: '坐姿自然呼吸', breathing: false,
+  steps: ['坐穩，雙腳踏地', '自然呼吸，唔使追秒數', '放鬆下巴同肩膊'],
+  caution: '唔使刻意吸深；暈或唔舒服就停。',
+  hold: { ...breath.hold!, enter: '坐穩，自然呼吸', cues: ['自然呼吸，唔使追秒數', '下巴同肩膊放鬆', '留意身體接觸椅面', '唔使改變呼吸'] } });
+STRETCH.push({ ...STRETCH[STRETCH.length - 1], id: 'lying-breath', name: '臥姿呼吸與身體掃描', floor: true, desk: false, prop: undefined,
+  steps: ['舒服咁仰臥，膝下可墊枕', '自然呼吸', '留意腳、臀、背同肩接觸支撐面', '先側身，再慢慢起身'],
+  hold: { ...breath.hold!, base: P({ ground: 1, tilt: -1.57 }), pose: P({ ground: 1, tilt: -1.57 }), enter: '舒服咁仰臥，唔使刻意吸深', cues: ['自然呼吸', '留意雙腳同臀部', '留意背部同肩膊，放低多餘用力', '慢慢郁手腳，唔使急住起身'] } });

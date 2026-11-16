@@ -1,7 +1,7 @@
 // 練習紀錄：做前做後打分、連續日數
 import { load, save } from './storage';
 
-export type Session = { at: number; ids: string[]; before: number; after: number };
+export type Session = { tensionBefore?: number | null; tensionAfter?: number | null; at: number; ids: string[]; before: number | null; after: number | null };
 
 const key = 'sessions';
 export const sessions = () => load<Session[]>(key, []);
@@ -9,7 +9,7 @@ export const addSession = (s: Session) => save(key, [...sessions(), s].slice(-30
 
 const dayOf = (t: number) => {
   const d = new Date(t);
-  return Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86400000);
+  return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000);
 };
 
 // 連續日數：由今日（或者尋日）向前數，每日最少練一次

@@ -3,11 +3,11 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { EXERCISES, plainName } from '../data/exercises';
 import { PROGRAMS, Program, isFinished, nextDay, progress, resetProgram } from '../data/programs';
-import { secondsOf } from '../lib/prescribe';
+import { secondsOf, routineSeconds } from '../lib/prescribe';
 import { Button, C, HAIR, SERIF } from '../ui/theme';
 
 export const minutesOf = (ids: string[]) =>
-  Math.max(1, Math.round(ids.reduce((s, id) => s + secondsOf(EXERCISES.find((e) => e.id === id)!), 0) / 60));
+  Math.max(1, Math.ceil(routineSeconds(ids.map(id => EXERCISES.find(e => e.id === id)!).map(exercise => ({ exercise, seconds: secondsOf(exercise) }))) / 60));
 
 const no = (i: number) => String(i + 1).padStart(2, '0');
 const nameOf = (id: string) => plainName(EXERCISES.find((e) => e.id === id) ?? { name: id });

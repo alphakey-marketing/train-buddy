@@ -1,5 +1,5 @@
 // 處方引擎：由偏緊程度、揀咗邊個位、喺邊度做、有幾耐，揀一套拉筋。
-// 規則：靜態拉筋每個位置每星期累積約 5 分鐘（分幾日做）先有穩定效果，所以未夠嘅位置優先。
+// 每週時間只作習慣提示，唔代表療效門檻。
 import { EXERCISES, Exercise } from '../data/exercises';
 import { Area } from '../data/types';
 import { Tightness } from './bodyTest';
@@ -8,7 +8,7 @@ import { cycleLength } from './motion';
 
 export type RoutineItem = { exercise: Exercise; seconds: number };
 export type Setting = 'office' | 'home';
-export type Plan = { areas: Area[]; setting: Setting; minutes: number }; // areas 空 = 跟測試結果
+export type Plan = { areas: Area[]; setting: Setting; minutes: number; equipment?: string[]; seatedOnly?: boolean }; // areas 空 = 跟測試結果
 
 export const DEFAULT_PLAN: Plan = { areas: [], setting: 'office', minutes: 5 };
 export const WEEK_TARGET_MIN = 5;
@@ -25,8 +25,8 @@ export function weekMinutes(list: Session[], now = Date.now()): Record<Area, num
     if (s.at < monday) continue;
     for (const id of s.ids) {
       const e = EXERCISES.find((x) => x.id === id);
-      if (!e || (e.kind !== '伸展' && !e.hold)) continue;
-      for (const a of e.areas) out[a] += secondsOf(e) / 60;
+      if (!e || e.kind !== '伸展' || !e.hold) continue;
+      for (const a of e.areas) out[a] += e.hold!.seconds * e.hold!.sides / 60 / e.areas.length;
     }
   }
   return out;
@@ -47,38 +47,32 @@ function score(e: Exercise, t: Tightness, plan: Plan, week: Record<Area, number>
   return v;
 }
 
-export function prescribe(t: Tightness, plan: Plan, list: Session[] = sessions()): RoutineItem[] {
-  const pool = EXERCISES.filter(
-    (e) => (e.kind === '伸展' || e.kind === '放鬆' || e.kind === '活化') && e.level <= 2 && (plan.setting === 'home' || (e.desk && !e.floor)),
-  );
+export function prescribe(t: Tightness, plan: Plan, list: Session[] = sessions(), exclude: (e: Exercise) => boolean = () => false): RoutineItem[] {
+  const pool = EXERCISES.filter(e => ['伸展', '放鬆', '活化'].includes(e.kind) && e.level <= 2 && !exclude(e) && available(e, plan));
   const week = weekMinutes(list);
   const last = new Set(list.length ? list[list.length - 1].ids : []);
-  const byScore = (a: Exercise, b: Exercise) => score(b, t, plan, week, last) - score(a, t, plan, week, last);
-  const ranked = pool.filter((e) => e.kind === '伸展').sort(byScore);
-  const budget = plan.minutes * 60;
+  const ranked = pool.filter(e => e.kind === '伸展').sort((a,b) => score(b,t,plan,week,last)-score(a,t,plan,week,last));
+  const ending = pool.find(e => e.id === 'natural-breath');
   const chosen: Exercise[] = [];
-  let used = 0;
-  // 先由一個慢慢郁嘅活動開始（暖身，亦都係研究建議：拉筋要配主動活動）
-  const warm = pool.filter((e) => e.kind === '活化' && !e.hold).sort(byScore)[0];
-  if (warm && budget >= 180) {
-    chosen.push(warm);
-    used += secondsOf(warm);
-  }
+  const fits = (e: Exercise) => routineSeconds([...chosen, e, ...(ending ? [ending] : [])].map(exercise => ({exercise,seconds: secondsOf(exercise)}))) <= plan.minutes * 60;
+  const warm = pool.find(e => e.id === 'shoulder-roll') ?? pool.find(e => e.kind === '活化' && !e.hold);
+  if (warm && plan.minutes >= 3 && fits(warm)) chosen.push(warm);
   for (const e of ranked) {
-    const len = secondsOf(e);
-    if (used + len > budget * 1.1) continue;
-    chosen.push(e);
-    used += len;
+    if (chosen.filter(x => x.kind === '伸展').length >= 4) break;
+    const primary = e.muscles.filter(m => m.weight >= 1).map(m => m.id);
+    if (chosen.some(x => x.muscles.some(m => m.weight >= 1 && primary.includes(m.id)))) continue;
+    if (plan.areas.length && !e.areas.some(a => plan.areas.includes(a))) continue;
+    if (fits(e)) chosen.push(e);
   }
-  // 時間有剩，尾段加一個放鬆
-  for (const e of pool.filter((x) => x.kind === '放鬆').sort(byScore)) {
-    if (used + secondsOf(e) <= budget * 1.1 && budget - used > 20) {
-      chosen.push(e);
-      break;
-    }
-  }
-  if (!chosen.length && ranked.length) chosen.push(ranked[0]);
-  return chosen.map((exercise) => ({ exercise, seconds: secondsOf(exercise) }));
+  if (ending) chosen.push(ending);
+  return chosen.map(exercise => ({ exercise, seconds: secondsOf(exercise) }));
 }
-
-export const routineSeconds = (r: RoutineItem[]) => r.reduce((s, i) => s + i.seconds, 0);
+export function available(e: Exercise, plan: Plan): boolean {
+  return (plan.setting === 'home' || (e.desk && !e.floor))
+    && (!plan.seatedOnly || e.prop?.kind === 'chair')
+    && (!e.prop || !plan.equipment || plan.equipment.includes(e.prop.kind));
+}
+export function readySeconds(prev: Exercise | undefined, cur: Exercise): number {
+  return !prev ? 6 : prev.floor !== cur.floor || prev.prop?.kind !== cur.prop?.kind ? 10 : 5;
+}
+export const routineSeconds = (r: RoutineItem[]) => r.reduce((s,i,n) => s + i.seconds + readySeconds(r[n-1]?.exercise,i.exercise),0);
