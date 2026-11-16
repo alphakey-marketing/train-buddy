@@ -57,6 +57,13 @@ const server = http.createServer((req, res) => {
       await delay(400);
     };
     await send('Page.enable');
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+      window.__speechCalls = 0;
+      if (window.speechSynthesis) {
+        const speak = window.speechSynthesis.speak.bind(window.speechSynthesis);
+        window.speechSynthesis.speak = utterance => { window.__speechCalls++; speak(utterance); };
+      }
+    ` });
     await send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: profile });
     await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await send('Page.navigate', { url: `http://127.0.0.1:${server.address().port}/` });
@@ -78,6 +85,12 @@ const server = http.createServer((req, res) => {
     }
     await click('開始');
     await waitFor('跳過');
+    await waitFor('聲關');
+    assert.equal(await evaluate('window.__speechCalls'), 0, 'Speech must stay off until the user opts in');
+    await click('聲關');
+    await waitFor('聲開');
+    await click('聲開');
+    await waitFor('聲關');
     for (let i = 0; i < 10 && (await text()).includes('跳過'); i++) await click('跳過目前動作');
     await waitFor('唔評分，繼續');
     await click('唔評分，繼續');
@@ -107,6 +120,7 @@ const server = http.createServer((req, res) => {
     await waitFor('坐椅交替抬腿');
     await click('開始');
     await waitFor('跳過');
+    await waitFor('聲關');
     await click('跳過目前動作');
     await waitFor('坐椅交替抬腿');
     await delay(7500);

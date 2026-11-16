@@ -29,7 +29,7 @@ export function Player({ routine, onDone, onQuit, onUncomfortable }: { onUncomfo
   const [phase, setPhase] = useState<'ready' | 'go'>('ready');
   const [left, setLeft] = useState(() => readyFor(undefined, routine[0].exercise));
   const [paused, setPaused] = useState(false);
-  const [voice, setVoice] = useState(true);
+  const [voice, setVoice] = useState(false);
   const [quiet, setQuiet] = useState(false);
   const [natural, setNatural] = useState(false);
   const [details, setDetails] = useState(false);
